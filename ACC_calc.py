@@ -11,28 +11,34 @@ import nc as nc
 import numpy as np
 import array as ar
 obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', 'sie')
-print(obs.shape)
-print(np.mean(obs))
-#print(np.mean(var*2*math.pi*6.371**2))
-#print(var.shape)
-#print(obs)
 
-model="CanCM4"
-init="198812"
-#Model into ACC matrix format
-var=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_%s_i%s.nc' % (model,init)),'sic')
-#print(var)
+sim=np.zeroes((12,12,32))
 
-#Observations into years
-for i in range(32):
-    index_pos=range(i*12,i*12+12)
-    obs=obsin[index_pos]
-    #for j in range(12):
-        #print(j)
-        
-#varem=np.mean(var, axis=1) #Average across ensembles
-#print(varem)
-#ACC=np.corrcoef(sim,obs)
+#Shape observations
+obs=obsin[:,0,0,0]
+obs=np.reshape(obs, (12,32))
+
+#Build model array
+for months in range(1,13):
+	if months<10:
+		m="0%s" % months
+	else:
+		m=str(months)
+	for years in range (1979,2011):
+		y=str(years)
+		var3=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM3_i%s%s.nc' % (y,m)),'sic')
+		var3=var3[:,:,0,0] #strips extra dimensions (check which ones)
+		var4=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM4_i%s%s.nc' % (y,m)),'sic')
+		var4=var4[:,:,0,0]
+		var=concatenate((var3,var4), axis=1)
+		extent=var*2*math.pi*6.371**2 #multiply constant to convert fraction to SIE
+		sim[months-1,:,years-1979]=np.mean(extent, axis=1) #Average across ensembles and insert into matrix
+
+#Calculate ACC
+ACC=zeros((12,12)
+for init in range(12):
+	for lead in range(12):
+		ACC[init,lead]=np.corrcoef(sim[init,lead,:],obs[init,:])
 
 print(ACC)
 
