@@ -20,7 +20,9 @@ sim=np.zeros((12,12,32))
 
 #Shape observations
 obs=obsin[:,0,0,0]
-obs=np.reshape(obs, (12,32))
+obs=np.reshape(obs, (32,12)).transpose()
+obs2=np.delete(obs,0,1)
+
 
 
 #Build model array
@@ -29,7 +31,7 @@ for months in range(1,13):
 		m="0%s" % months
 	else:
 		m=str(months)
-	for years in range (1979,2011):
+	for years in range (1980,2011):
             y=str(years)
             var3=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM3_i%s%s.nc' % (y,m)),'sic')
             var3=var3[:,:,0,0] #strips extra dimensions (check which ones)
@@ -41,14 +43,21 @@ for months in range(1,13):
             sim[months-1,:,years-1979]=np.mean(extent, axis=1) #Average across ensembles and insert into matrix
 
 
+for i in range(12): #line up all target months
+    sim[i,:,:]=np.roll(sim[i,:,:],i,axis=0)
+
+sim2=np.delete(sim,0,2)
+
 #Calculate ACC
 ACC=np.zeros((12,12), dtype=np.ndarray)
-print(ACC.dtype)
 for init in range(12):
-	for lead in range(12):
-            ACC[init,lead]=np.corrcoef(sim[init,lead,:],obs[init,:])[1,0]
+	for target in range(12):
+            ACC[init,target]=np.corrcoef(sim2[init,target,:],obs2[target,:])[1,0]
+            
 
 ACC = np.vstack(ACC[:, :]).astype(np.float) #ACC is an object and pcolor needs floats
+
+print(ACC)
 
 #Plot ACC
 x=range(12)
