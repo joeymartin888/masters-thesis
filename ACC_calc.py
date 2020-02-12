@@ -65,11 +65,15 @@ print(ACC)
 #Plot ACC
 k=pd.DataFrame(ACC,index=calendar.month_name[1:13], columns=calendar.month_name[1:13])
 fig, ax = plt.subplots()
-ax.pcolor(k)
+d=ax.pcolor(k)
+plt.colorbar(d)
+plt.title("ACC of forecasts from 1980 to 2011")
+ax.invert_xaxis
 ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)
 ax.set_xticklabels(k.index, rotation=90)
 ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)
 ax.set_yticklabels(k.index)
-plt.colorbar(ACC)
+plt.xlabel("Target month")
+plt.ylabel("Initialization month")
 plt.show()
 
