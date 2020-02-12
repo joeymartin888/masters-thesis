@@ -13,6 +13,10 @@ import numpy as np
 import array as ar
 import matplotlib.colors
 import matplotlib.pyplot as plt
+import pandas as pd
+import calendar
+
+
 
 obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', 'sie')
 
@@ -58,11 +62,14 @@ for init in range(12):
 ACC = np.vstack(ACC[:, :]).astype(np.float) #ACC is an object and pcolor needs floats
 
 print(ACC)
-
 #Plot ACC
-x=range(12)
-y=range(12)
-xv, yv = np.meshgrid(x,y)
-plt.pcolor(xv,yv,ACC)
-plt.colorbar()
+k=pd.DataFrame(ACC,index=calendar.month_name[1:13], columns=calendar.month_name[1:13])
+fig, ax = plt.subplots()
+ax.pcolor(k)
+ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)
+ax.set_xticklabels(k.index, rotation=90)
+ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)
+ax.set_yticklabels(k.index)
+plt.colorbar(ACC)
 plt.show()
+
