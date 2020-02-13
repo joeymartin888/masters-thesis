@@ -37,10 +37,8 @@ for months in range(1,13):
 		m=str(months)
 	for years in range (1980,2011):
             y=str(years)
-            var3=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM3_i%s%s.nc' % (y,m)),'sic')
-            var3=var3[:,:,0,0] #strips extra dimensions (check which ones)
-            var4=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM4_i%s%s.nc' % (y,m)),'sic')
-            var4=var4[:,:,0,0]
+            var3=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM3_i%s%s.nc' % (y,m)),'sic').squeeze()
+            var4=nc.getvar(('/home/josmarti/Data/SIE/SIE_monthly_CanCM4_i%s%s.nc' % (y,m)),'sic').squeeze()
             var=np.concatenate((var3,var4), axis=1)
             extent=var*2*math.pi*6.371**2 #multiply constant to convert fraction to SIE
             #avex=np.mean(extent, axis=1)
@@ -68,7 +66,6 @@ fig, ax = plt.subplots()
 d=ax.pcolor(k)
 plt.colorbar(d)
 plt.title("ACC of forecasts from 1980 to 2011")
-ax.invert_xaxis
 ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)
 ax.set_xticklabels(k.index, rotation=90)
 ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)
