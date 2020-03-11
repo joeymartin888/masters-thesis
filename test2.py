@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import calendar
 
-basedir='/HOME/rms/DATA/CanSIPS/monthly/SIA'
-obsin=nc.getvar('/HOME/rms/DATA/OBSERVATIONS/OI/NSIDC/monthly/NH_SIA/NSIDC_1979_2010_nh_siea.nc', 'sia').squeeze()
+basedir='/home/josmarti/Data/SIE'
+obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', 'sie').squeeze()
 
 sim=np.zeros((12,12,31))
 
@@ -42,8 +42,8 @@ for months in range(1,13):
 		m=str(months)
 	for years in range (1979,2009+1):
             y=str(years)
-            var3=nc.getvar(('{}/SIA_i%s%s_CanCM3.nc' % (y,m)).format(basedir),'sic').squeeze()
-            var4=nc.getvar(('{}/SIA_i%s%s_CanCM4.nc' % (y,m)).format(basedir),'sic').squeeze()
+            var3=nc.getvar(('{}/SIE_monthly_CanCM3_i%s%s.nc' % (y,m)).format(basedir),'sic').squeeze()
+            var4=nc.getvar(('{}/SIE_monthly_CanCM4_i%s%s.nc' % (y,m)).format(basedir),'sic').squeeze()
             var=np.concatenate((var3,var4), axis=1)
             extent=var*2*math.pi*6.371**2 #multiply constant to convert fraction to SIE
             #avex=np.mean(extent, axis=1)
