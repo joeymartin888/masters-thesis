@@ -19,6 +19,9 @@ import calendar
 import rms_plots as rpl
 import CCMA_plot
 
+#Select CANSIPS v1 or v2
+
+CANSIPS="v2"
 
 #Select OLD or NEW
 versions=["OLD","NEW"]
@@ -53,7 +56,10 @@ for version in versions:
     		m=str(months)
     	for year in years:
                 y=str(year)
-                var3=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM3_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
+                if CANSIPS=="v1":
+                    var3=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM3_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
+                if CANSIPS=="v2":
+                    var3=nc.getvar(('/home/josmarti/Data/GEM-NEMO/%s/%s_monthly_GEM-NEMO_i%s%s.nc' % (metric,metric,y,m)),'sic').squeeze()
                 var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM4_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
                 var=np.concatenate((var3,var4), axis=1)
                 extent=var*2*math.pi*6.371**2 #multiply constant to convert fraction to SIE
