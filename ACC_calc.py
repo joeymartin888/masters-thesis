@@ -36,9 +36,9 @@ for version in versions:
 #for CANSIPS in CANSIPSes:    
     #Select SIE or SIA
     
-    if version=="NEW":
+    """if version=="NEW":
         CANSIPS="v2"
-    
+    #for overall comparison"""
     
     metric="SIA"
     
