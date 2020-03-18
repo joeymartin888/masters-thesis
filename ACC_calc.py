@@ -20,19 +20,26 @@ import rms_plots as rpl
 import CCMA_plot
 
 #Select CANSIPS v1 or v2
-
-CANSIPS="v2"
+CANSIPS="v1"
+#CANSIPSes=["v1", "v2"]
 
 #Select OLD or NEW
-versions=["OLD","NEW"]
+#version="NEW"
+versions=["OLD", "NEW"]
 
 #Set plot style
 pstyle = "pc"
 if pstyle != "cf" and pstyle != "pc":
     print("Select a plot style (cf or pc)")
-    
-for version in versions:    
+  
+for version in versions:
+#for CANSIPS in CANSIPSes:    
     #Select SIE or SIA
+    
+    if version=="NEW":
+        CANSIPS="v2"
+    
+    
     metric="SIA"
     
     obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
@@ -120,7 +127,7 @@ for version in versions:
         pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar', latlon=False)
         pc=rpl.add_cf(ax,range(12),range(12),ACC2,**pcparams)
     plt.colorbar(pc)
-    plt.title("%s %s ACC of forecasts from %i to %i" % (str.capitalize(version), metric, min(years),(max(years)+1)))
+    plt.title("%s %s %s ACC of forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
     ax.invert_xaxis
     ax.invert_yaxis
     ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
