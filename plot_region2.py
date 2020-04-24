@@ -19,7 +19,7 @@ import nc as  nc
 ###############################################################################
 #######READ########## #########################################################
 ###############################################################################
-infile = '/HOME/rms/DATA/MASKS/ICE/NAVY/iceregions_128_64.nc'
+infile = '/home/josmarti/Projects/masters-thesis/iceregions_128_64.nc'
 lon=nc.getvar(infile,'lon'); nlon=len(lon)
 lat=nc.getvar(infile,'lat'); nlat=len(lat)
 region=nc.getvar(infile,'REG').squeeze()

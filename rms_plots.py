@@ -4,7 +4,7 @@ Created on Wed Sep 16 18:21:18 2015
 @author: acrnrms
 """
 import numpy as np
-#from mpl_toolkits.basemap import Basemap (not installed)
+#from mpl_toolkits.basemap import Basemap #(not installed)
 import matplotlib.pyplot as plt # for basic plotting
 import mpl_toolkits as mpltk
 import matplotlib.colors as col

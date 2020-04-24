@@ -11,7 +11,7 @@
 ## INPUT 
 #####################################################
 import numpy as np
-import cdo; cdo = cdo.Cdo()
+import cdo#; cdo = cdo.Cdo()
 import matplotlib.pyplot as plt # for basic plotting
 import rms_plots as rpl
 import nc as  nc
