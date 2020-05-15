@@ -10,6 +10,9 @@ import mpl_toolkits as mpltk
 import matplotlib.colors as col
 from matplotlib.colors import from_levels_and_colors
 import matplotlib.cm as cm
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import cartopy.util as cutil
 
 ############################################################################
 #COLOR MAPS#################################################################
@@ -1112,6 +1115,7 @@ def make_basemap(maptype='glob',drawgrid=False,axis=None,
     if axis != None: # if an axis is given, add to dict for basemap
         mapparams['ax'] = axis
                      
+    
     map=Basemap(**mapparams)
     map.drawcoastlines(linewidth=coastlinewidth,color="0.1")
     if landfillcol != '':
@@ -1140,7 +1144,7 @@ def add_plot_latlon(lat,lon,fld,map,axis=None,cint='',clevs='',colors='',
     """      
     ##### Build grid, add cyclic lon if needed, shift lons+lats in case of pcolor plot
     if np.mod(lon.shape,2) == 0:
-       fld,lon = mpltk.basemap.addcyclic(fld,lon)
+       fld,lon = cutil.add_cyclic_point(fld,lon) #changed to cartopy by Joey Martin
     if shadetype == 'pcolor':
         lon_edge,lat_edge=centre_to_edge(lon,lat)
         lons, lats = np.meshgrid(lon_edge,lat_edge) ###NB: len(lat_edge)=nlat+1
@@ -1172,23 +1176,23 @@ def add_plot_latlon(lat,lon,fld,map,axis=None,cint='',clevs='',colors='',
     #############plot######################    
     if shadetype == 'pcolor':
 #        print pcpararms
-        pc=map.pcolormesh(lons,lats,fld,**pcparams)
+        pc=plt.pcolormesh(lons,lats,fld)#,**pcparams)
     elif shadetype == 'contourf':
          if clevs != '':
              pcparams['levels']=clevs
              pcparams['extend']='both'
-             pc=map.contourf(lons,lats,fld,**pcparams)
+             pc=plt.contourf(lons,lats,fld)#,**pcparams)
          else:
-             pc=map.contourf(lons,lats,fld,19,**pcparams)    
+             pc=plt.contourf(lons,lats,fld,19)#,**pcparams)    
     else:
         print "Incorrect shadetype. Choose pcolor or contourf"
         return -1
     ############cbar######################
     if supp_cb==False:
         if clevs != '':
-            map.colorbar(pc,location='right',pad="5%",ticks=clevs)
+            plt.colorbar(pc,location='right',pad="5%",ticks=clevs)
         else:
-            map.colorbar(pc,location='right',pad="5%")
+            plt.colorbar(pc,location='right',pad="5%")
     return pc
 
 ############################################################################
@@ -1441,8 +1445,9 @@ def plot_latlon(lat,lon,fld,axis=None,fnamesave='',
 
     ## open new figure if fnamesave is defined
     if fnamesave !='': fig=plt.figure()
-    bm=make_basemap(axis=axis,maptype=maptype,drawgrid=drawgrid,
-                   landfillcol=landfillcol,oceanfillcol=oceanfillcol,coastlinewidth=coastlinewidth)
+    bm=make_cartopy()
+    """bm=make_basemap(axis=axis,maptype=maptype,drawgrid=drawgrid,
+                   landfillcol=landfillcol,oceanfillcol=oceanfillcol,coastlinewidth=coastlinewidth)"""
     pc=add_plot_latlon(lat,lon,fld,bm,axis=None,
             shadetype=shadetype,clevs=clevs,colors=colors,supp_cb=supp_cb,extend=extend)
     add_title(title=title,panellab=panellab)                  
@@ -1585,3 +1590,13 @@ def register_rms_cmaps_old():
 #
 register_rms_cmaps()
 
+"""Added by Joey Martin"""
+
+def make_cartopy(projection=ccrs.LambertCylindrical(), figsize=(6, 4), resolution='110m'):
+    fig, ax = plt.subplots(figsize=figsize, subplot_kw=dict(projection=projection))
+    ax.set_global()
+    ax.coastlines(resolution=resolution, color='k')
+    # Only PlateCarree and Mercator plots are currently supported.
+    gl = ax.gridlines(draw_labels=False)
+    ax.add_feature(cfeature.LAND, facecolor='0.75')
+    return fig, ax

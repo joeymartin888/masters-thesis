@@ -21,12 +21,28 @@ import CCMA_plot
 from scipy import signal
 import rms_utils_boot as bt
 
+#Select metric
+metric="SIA"
+
+obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
+
+#Select Year Range
+years=range(1980,2010)
+
+sim=np.zeros((12,12,len(years)))
+
+#Shape observations
+obs=np.delete((np.reshape(obsin, (32,12)).transpose()),range(min(years)-1979),1)
+
 #Select CANSIPS v1 or v2
-#CANSIPS="v1"
+#CANSIPS="v2"
 CANSIPSes=["v1", "v2"]
 
 #Option for linear detrending
-detrend=False
+detrend=True
+
+#Used to seperate model outputs
+single=False
 
 #Select OLD or NEW
 version="NEW"
@@ -36,31 +52,33 @@ version="NEW"
 pstyle = "pc"
 if pstyle != "cf" and pstyle != "pc":
     print("Select a plot style (cf or pc)")
+    
+#Build persistance model
+persistence=np.zeros(sim.shape)
+obs_mean=np.mean(obs, axis=1, keepdims=True)
+obs_anom=obs-obs_mean
+for init in range(12):
+	for target in range(12):
+            if init==0:
+                persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,1::]
+            else:
+                persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,0:-1] 
+
+if detrend:
+    persistence=signal.detrend(persistence)
+    obs=signal.detrend(obs)
+    
 
 diff=0  
 #for version in versions:
-for CANSIPS in CANSIPSes:    
+for CANSIPS in CANSIPSes:
+#for smark in range(2):    
     #Select SIE or SIA
     
-    metric="SIE"
-    
+        
     """if version=="NEW":
         CANSIPS="v2"
     #for overall comparison"""
-    
-    
-    
-    obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
-    
-    #Select Year Range
-    years=range(1980,2010)
-    
-    sim=np.zeros((12,12,len(years)))
-    
-    #Shape observations
-    obs=np.delete((np.reshape(obsin, (32,12)).transpose()),range(min(years)-1979),1)
-    
-    
     
     
     #Build model array
@@ -77,49 +95,75 @@ for CANSIPS in CANSIPSes:
                     var3=nc.getvar(('/home/josmarti/Data/GEM-NEMO/%s/%s_monthly_GEM-NEMO_i%s%s.nc' % (metric,metric,y,m)),'sic').squeeze()
                 var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM4_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
                 var=np.concatenate((var3,var4), axis=1)
+                if single:
+                    if smark==0:
+                        var=var3
+                    elif smark==1:
+                        var=var4
                 if metric=="SIA":
                     sim[months-1,:,year-min(years)]=np.mean(var, axis=1) #Average across ensembles and insert into matrix
                 if metric=="SIE":
                     extent=var*2*math.pi*6.371**2 #multiply constant to convert fraction to SIE
                     #avex=np.mean(extent, axis=1)
                     sim[months-1,:,year-min(years)]=np.mean(extent, axis=1) #Average across ensembles and insert into matrix
-    
+#%%
     
     for i in range(12): #line up all target months
         sim[i,:,:]=np.roll(sim[i,:,:],i,axis=0)
     
-    if detrend:
-        """sim=signal.detrend(sim)         #Linear detrending  
-        obs=signal.detrend(obs)"""
+   
+
+                    
         
-        for i in range(12):                #Polynomial detrending
+    if detrend:
+        sim=signal.detrend(sim)         #Linear detrending  
+                
+        """for i in range(12):                #Polynomial detrending
             for j in range(12):
                 t_sim=np.arange(len(sim[i,j,:]))
                 d_sim=np.polyfit(t_sim, sim[i,j,:], 1)
                 sim[i,j,:]=sim[i,j,:]-d_sim[0]*t_sim
             t_obs=np.arange(len(obs[i,:]))
             d_obs=np.polyfit(t_obs, obs[i,:], 1)
-            obs[i,:]=obs[i,:]-d_obs[0]*t_obs    
+            obs[i,:]=obs[i,:]-d_obs[0]*t_obs   """ 
+       
+    #print(persistence)
     
     #Calculate ACC
     ACC=np.zeros((12,12), dtype=np.ndarray)
     boot_temp=np.zeros((12,12), dtype=np.ndarray)
     boot=np.zeros((12,12), dtype=np.ndarray)
+    ACC_pers=np.zeros((12,12), dtype=np.ndarray)
+    boot_temp_pers=np.zeros((12,12), dtype=np.ndarray)
+    boot_pers=np.zeros((12,12), dtype=np.ndarray)
     for init in range(12):
     	for target in range(12):
                 if init<=target: 
                     ACC[init,target]=np.corrcoef(sim[init,target,:],obs[target,0:-1])[1,0]
                     boot_temp[init,target]=bt.calc_corr_boot(sim[init,target,:],obs[target,0:-1],1000)
                     boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+                    ACC_pers[init,target]=np.corrcoef(persistence[init,target,:],obs[target,0:-1])[1,0]
+                    boot_temp_pers[init,target]=bt.calc_corr_boot(persistence[init,target,:],obs[target,0:-1],1000)
+                    boot_pers[init,target]=bt.calc_boot_stats(boot_temp_pers[init,target],sides=2,pval_threshold=0.05)[1]
                 else: #rolls observations to realign years
                     ACC[init,target]=np.corrcoef(sim[init,target,:],obs[target,1::])[1,0]
                     boot_temp[init,target]=bt.calc_corr_boot(sim[init,target,:],obs[target,1::],1000)
                     boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+                    ACC_pers[init,target]=np.corrcoef(persistence[init,target,:],obs[target,1::])[1,0]
+                    boot_temp_pers[init,target]=bt.calc_corr_boot(persistence[init,target,:],obs[target,1::],1000)
+                    boot_pers[init,target]=bt.calc_boot_stats(boot_temp_pers[init,target],sides=2,pval_threshold=0.05)[1]
+    
+    #print(ACC_pers)
+    
+    
+    
+          
+
+              
                 
-                    
     #boot[init,target]=bt.calc_corr_boot(sim,obs,1000)
     
-    #%%
+   
     
     
     #print(len(boot[5,3]))
@@ -127,14 +171,17 @@ for CANSIPS in CANSIPSes:
     nboot=np.array(1000,dtype=int)
     dims=np.concatenate(([nboot],np.array(np.shape(sim)[1::])))
     print(dims)"""
-    #%%
+
     ACC = np.vstack(ACC[:, :]).astype(np.float) #ACC is an object and pcolor needs floats
-    
+    ACC_pers = np.vstack(ACC_pers[:, :]).astype(np.float) #ACC_pers is an object and pcolor needs floats
     
     
     ACC2=np.zeros((12,12))
     boot_temp2=np.zeros((12,12), dtype=np.ndarray)
     boot2=np.zeros((12,12))
+    ACC2_pers=np.zeros((12,12))
+    boot_temp2_pers=np.zeros((12,12), dtype=np.ndarray)
+    boot2_pers=np.zeros((12,12))
 
     for init in range(12):
         for target in range(12):
@@ -145,6 +192,10 @@ for CANSIPS in CANSIPSes:
             ACC2[ilag,target]=ACC[init,target]
             boot_temp2[ilag,target]=boot_temp[init,target]
             boot2[ilag,target]=boot[init,target]
+            ACC2_pers[ilag,target]=ACC_pers[init,target]
+            boot_temp2_pers[ilag,target]=boot_temp_pers[init,target]
+            boot2_pers[ilag,target]=boot_pers[init,target]
+            
             
     if diff==0:
         old_ACC=ACC2
@@ -154,6 +205,31 @@ for CANSIPS in CANSIPSes:
     if diff==1:
         new_ACC=ACC2
         new_boot=boot_temp2
+        
+    fig, ax = plt.subplots()
+    
+    pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+    pc=rpl.add_pc(ax,range(13),range(13),ACC2_pers,**pcparams)
+    plt.colorbar(pc)
+    for init in range(len(boot2_pers[:,0])):
+        for target in range(len(boot2_pers[0,:])):
+            if boot2_pers[init,target]>=0:
+                plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+    if detrend:
+        plt.title("ACC for Detrended Persistence from %i to %i" % (min(years),(max(years)+1)))
+    else:
+        plt.title("ACC for Persistence from %i to %i" % (min(years),(max(years)+1)))
+    ax.invert_xaxis
+    ax.invert_yaxis
+    ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
+    ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
+    ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)    
+    ax.set_yticklabels(['0','1','2','3','4','5','6','7','8','9','10','11'])  
+    plt.xlabel("Predicted Month")    
+    plt.ylabel("Lead (Months)")      
+    plt.show()   
+
+#%%    
     
     fig, ax = plt.subplots()
     if pstyle == "pc":
@@ -170,6 +246,13 @@ for CANSIPS in CANSIPSes:
                 plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
     if detrend:
         plt.title("%s %s %s ACC of detrended forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
+    else:
+        plt.title("%s %s %s ACC of forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
+    if single:
+        if smark==0:
+            plt.title("GEM-NEMO %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years)+1)))
+        elif smark==1:
+            plt.title("CanCM4i %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years)+1)))
     else:
         plt.title("%s %s %s ACC of forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
     ax.invert_xaxis
