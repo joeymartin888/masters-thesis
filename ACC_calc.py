@@ -35,18 +35,18 @@ sim=np.zeros((12,12,len(years)))
 obs=np.delete((np.reshape(obsin, (32,12)).transpose()),range(min(years)-1979),1)
 
 #Select CANSIPS v1 or v2
-#CANSIPS="v2"
-CANSIPSes=["v1", "v2"]
+CANSIPS="v1"
+#CANSIPSes=["v1", "v2"]
 
 #Option for linear detrending
-detrend=True
+detrend=False
 
 #Used to seperate model outputs
 single=False
 
 #Select OLD or NEW
-version="NEW"
-#versions=["OLD", "NEW"]
+#version="NEW"
+versions=["OLD", "NEW"]
 
 #Set plot style
 pstyle = "pc"
@@ -55,14 +55,17 @@ if pstyle != "cf" and pstyle != "pc":
     
 #Build persistance model
 persistence=np.zeros(sim.shape)
-obs_mean=np.mean(obs, axis=1, keepdims=True)
-obs_anom=obs-obs_mean
+obs_pers=np.zeros(obs.shape)
+obs_pers[0:11,:]=obs[0:11,:]
+obs_pers[11,0]=obsin[(min(years)-1980)*12+11]
+obs_pers[11,1::]=obs[11,0:-1]
+obs_mean=np.mean(obs_pers, axis=1, keepdims=True)
+obs_anom=obs_pers-obs_mean
 for init in range(12):
 	for target in range(12):
-            if init==0:
-                persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,1::]
-            else:
-                persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,0:-1] 
+            persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,0:-1] 
+
+
 
 if detrend:
     persistence=signal.detrend(persistence)
@@ -70,11 +73,12 @@ if detrend:
     
 
 diff=0  
-#for version in versions:
-for CANSIPS in CANSIPSes:
+#%%    
+for version in versions:
+#for CANSIPS in CANSIPSes:
 #for smark in range(2):    
     #Select SIE or SIA
-    
+
         
     """if version=="NEW":
         CANSIPS="v2"
@@ -229,8 +233,7 @@ for CANSIPS in CANSIPSes:
     plt.ylabel("Lead (Months)")      
     plt.show()   
 
-#%%    
-    
+#%%
     fig, ax = plt.subplots()
     if pstyle == "pc":
         pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
@@ -243,7 +246,13 @@ for CANSIPS in CANSIPSes:
     for init in range(len(boot2[:,0])):
         for target in range(len(boot2[0,:])):
             if boot2[init,target]>=0:
-                plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+                if ACC2_pers[init,target]>=ACC2[init,target]:
+                    plt.scatter((target+0.5),(init+0.5), color = 'black', s=50, marker='x')
+                else:
+                    plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+            else:
+                if ACC2[init,target]>ACC2_pers[init,target]:
+                    plt.scatter((target+0.5),(init+0.5), color = 'blue', s=20, marker='s')
     if detrend:
         plt.title("%s %s %s ACC of detrended forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
     else:
@@ -253,8 +262,6 @@ for CANSIPS in CANSIPSes:
             plt.title("GEM-NEMO %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years)+1)))
         elif smark==1:
             plt.title("CanCM4i %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years)+1)))
-    else:
-        plt.title("%s %s %s ACC of forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
     ax.invert_xaxis
     ax.invert_yaxis
     ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
@@ -265,7 +272,7 @@ for CANSIPS in CANSIPSes:
     plt.ylabel("Lead (Months)")      
     plt.show()
     
-     
+#%%     
    
     
     """
