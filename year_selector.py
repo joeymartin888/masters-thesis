@@ -52,10 +52,10 @@ for t in tries:
     if s==5 and not pd.isna(selected.iloc[5,1]):
         break
 print selected
-print ('\n Selected with a separation of %s years after %s tries.' % (str(separation_margin),str(t)))
+print ('\nSelected with a separation of %s years after %s tries.' % (str(separation_margin),str(t)))
 
 plt.plot(years, sic_anoms.mean(axis=0))
 plt.scatter(selected['Year'], selected['Anomaly'], color='r', s=50)
-plt.title('Sea Ice Concentration Anomalies of Control Run')
+plt.title('Mean Monthly Sea Ice Concentration Anomalies of Control Run')
 plt.xlabel('Years')
 plt.ylabel('Anomaly')
