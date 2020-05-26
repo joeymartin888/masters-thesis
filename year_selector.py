@@ -29,7 +29,7 @@ sic_anoms_mean=sic_anoms.mean(axis=0).sort_values()
 
 sextiles=np.array_split(sic_anoms_mean, 6)
 
-selected=pd.DataFrame(index=range(len(sextiles)), columns=['Year', 'Anomaly'])
+selected=pd.DataFrame(index=range(len(sextiles)), columns=['Year', 'Mean of Monthly Anomalies'])
 
 separation_margin=20
 tries=range(1000)
@@ -55,7 +55,7 @@ print selected
 print ('\nSelected with a separation of %s years after %s tries.' % (str(separation_margin),str(t)))
 
 plt.plot(years, sic_anoms.mean(axis=0))
-plt.scatter(selected['Year'], selected['Anomaly'], color='r', s=50)
-plt.title('Mean Monthly Sea Ice Concentration Anomalies of Control Run')
+plt.scatter(selected['Year'], selected['Mean of Monthly Anomalies'], color='r', s=50)
+plt.title('Mean of Monthly Sea Ice Concentration Anomalies of Control Run')
 plt.xlabel('Years')
 plt.ylabel('Anomaly')

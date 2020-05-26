@@ -41,6 +41,9 @@ CANSIPS="v1"
 #Option for linear detrending
 detrend=False
 
+#Display persistence forecast
+show_persistence=False
+
 #Used to seperate model outputs
 single=False
 
@@ -209,29 +212,30 @@ for version in versions:
     if diff==1:
         new_ACC=ACC2
         new_boot=boot_temp2
-        
-    fig, ax = plt.subplots()
     
-    pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
-    pc=rpl.add_pc(ax,range(13),range(13),ACC2_pers,**pcparams)
-    plt.colorbar(pc)
-    for init in range(len(boot2_pers[:,0])):
-        for target in range(len(boot2_pers[0,:])):
-            if boot2_pers[init,target]>=0:
-                plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
-    if detrend:
-        plt.title("ACC for Detrended Persistence from %i to %i" % (min(years),(max(years)+1)))
-    else:
-        plt.title("ACC for Persistence from %i to %i" % (min(years),(max(years)+1)))
-    ax.invert_xaxis
-    ax.invert_yaxis
-    ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
-    ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
-    ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)    
-    ax.set_yticklabels(['0','1','2','3','4','5','6','7','8','9','10','11'])  
-    plt.xlabel("Predicted Month")    
-    plt.ylabel("Lead (Months)")      
-    plt.show()   
+    if show_persistence:    
+        fig, ax = plt.subplots()
+        
+        pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+        pc=rpl.add_pc(ax,range(13),range(13),ACC2_pers,**pcparams)
+        plt.colorbar(pc)
+        for init in range(len(boot2_pers[:,0])):
+            for target in range(len(boot2_pers[0,:])):
+                if boot2_pers[init,target]>=0:
+                    plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+        if detrend:
+            plt.title("ACC for Detrended Persistence from %i to %i" % (min(years),(max(years)+1)))
+        else:
+            plt.title("ACC for Persistence from %i to %i" % (min(years),(max(years)+1)))
+        ax.invert_xaxis
+        ax.invert_yaxis
+        ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
+        ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
+        ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)    
+        ax.set_yticklabels(['0','1','2','3','4','5','6','7','8','9','10','11'])  
+        plt.xlabel("Predicted Month")    
+        plt.ylabel("Lead (Months)")      
+        plt.show()   
 
 #%%
     fig, ax = plt.subplots()
