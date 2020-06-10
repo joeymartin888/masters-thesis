@@ -8,11 +8,13 @@ Created on Wed Apr 22 10:02:45 2020
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import rms_plots as rpl
+import numpy as np
+import nc as nc
 
 clevslab=np.arange(17)-1 #from rms_plots.py 
 
 ####### read data
-infile = '/home/josmarti/Projects/masters-thesis/iceregions_128_64.nc'
+infile = '/home/josmarti/Data/iceregions_128_64.nc'
 lon=nc.getvar(infile,'lon')
 lat=nc.getvar(infile,'lat')
 region=nc.getvar(infile,'REG').squeeze()

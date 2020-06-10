@@ -21,6 +21,14 @@ import CCMA_plot
 from scipy import signal
 import rms_utils_boot as bt
 
+#'-1ocean','0land','1ARC','2BER','3STL','4BAF','5GRE','6BAR','7KAR','8LAP','9ESI','10CHU','11BEA','12CAN','13HUD','14OKH'
+region="13HUD" 
+
+if region[1].isdigit():
+    r=int(region[0:2])
+else:
+    r=int(region[0])
+
 #Select metric
 metric="SIA"
 
@@ -32,7 +40,30 @@ years=range(1980,2010)
 sim=np.zeros((12,12,len(years)))
 
 #Shape observations
-obs=np.delete((np.reshape(obsin, (32,12)).transpose()),range(min(years)-1979),1)
+if r !=0 :
+    obsingeo=np.delete(nc.getvar('/home/josmarti/Data/Observations/had2cis_128_64_195901_202004_sic.nc', 'SICN').squeeze(), 128, 2)
+    mask=nc.getvar('/home/josmarti/Data/iceregions_128_64.nc', 'REG').squeeze()
+    gridpoint=nc.getvar('/home/josmarti/Data/areacella_fx_CanCM4_decadal2001_r0i0p0.nc','areacella')
+    for m in range(len(mask)):
+        for n in range(len(mask[0])):
+            if mask[m,n] != r:
+                mask[m,n]=0
+            elif mask[m,n] == r:
+                mask[m,n]=1
+    obs1=np.multiply(np.multiply(obsingeo,gridpoint),mask)
+    obsnh=np.delete(obs1, range(32), axis=1)
+    obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
+    obs2mask=obstemp[((min(years)-1959)*12):((max(years)+2-1959)*12)]
+    obs=np.reshape(obs2mask, (31,12)).transpose()
+else:
+    obsingeo=np.delete(nc.getvar('/home/josmarti/Data/Observations/had2cis_128_64_195901_202004_sic.nc', 'SICN').squeeze(), 128, 2)
+    gridpoint=nc.getvar('/home/josmarti/Data/areacella_fx_CanCM4_decadal2001_r0i0p0.nc','areacella')
+    obs1=np.multiply(obsingeo,gridpoint)
+    obsnh=np.delete(obs1, range(32), axis=1)
+    obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
+    obs2mask=obstemp[((min(years)-1959)*12):((max(years)+2-1959)*12)]
+    obs=np.reshape(obs2mask, (31,12)).transpose()
+    #obs=np.delete((np.reshape(obsin, (32,12)).transpose()),range(min(years)-1979),1)
 
 #Select CANSIPS v1 or v2
 CANSIPS="v1"
@@ -42,7 +73,7 @@ CANSIPS="v1"
 detrend=False
 
 #Display persistence forecast
-show_persistence=False
+show_persistence=True
 
 #Used to seperate model outputs
 single=False
@@ -60,7 +91,10 @@ if pstyle != "cf" and pstyle != "pc":
 persistence=np.zeros(sim.shape)
 obs_pers=np.zeros(obs.shape)
 obs_pers[0:11,:]=obs[0:11,:]
-obs_pers[11,0]=obsin[(min(years)-1980)*12+11]
+#if r!=0:
+obs_pers[11,0]=obstemp[(min(years)-1-1959)*12+11]
+#else:    
+ #   obs_pers[11,0]=obsin[(min(years)-1980)*12+11]
 obs_pers[11,1::]=obs[11,0:-1]
 obs_mean=np.mean(obs_pers, axis=1, keepdims=True)
 obs_anom=obs_pers-obs_mean
@@ -68,7 +102,7 @@ for init in range(12):
 	for target in range(12):
             persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,0:-1] 
 
-
+#%%
 
 if detrend:
     persistence=signal.detrend(persistence)
@@ -97,10 +131,19 @@ for version in versions:
     	for year in years:
                 y=str(year)
                 if CANSIPS=="v1":
-                    var3=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM3_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
+                    if r !=0 :
+                        var3=var3=nc.getvar(('/home/josmarti/Data/%s/%s/%s/%s_monthly_%s_CanCM3_i%s%s.nc' % (version,metric,region,metric,region,y,m)),'sic').squeeze()
+                    else:
+                        var3=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM3_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
                 if CANSIPS=="v2":
                     var3=nc.getvar(('/home/josmarti/Data/GEM-NEMO/%s/%s_monthly_GEM-NEMO_i%s%s.nc' % (metric,metric,y,m)),'sic').squeeze()
-                var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM4_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
+                #if r!=0:
+                #    var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s/%s_monthly_%s_CanCM4_i%s%s.nc' % (version,metric,region,metric,region,y,m)),'sic').squeeze()
+                #else:
+                if r !=0 :
+                    var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s/%s_monthly_%s_CanCM4_i%s%s.nc' % (version,metric,region,metric,region,y,m)),'sic').squeeze()
+                else:
+                    var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM4_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()
                 var=np.concatenate((var3,var4), axis=1)
                 if single:
                     if smark==0:
@@ -135,6 +178,7 @@ for version in versions:
             obs[i,:]=obs[i,:]-d_obs[0]*t_obs   """ 
        
     #print(persistence)
+    
     
     #Calculate ACC
     ACC=np.zeros((12,12), dtype=np.ndarray)
@@ -258,9 +302,15 @@ for version in versions:
                 if ACC2[init,target]>ACC2_pers[init,target]:
                     plt.scatter((target+0.5),(init+0.5), color = 'blue', s=20, marker='s')
     if detrend:
-        plt.title("%s %s %s ACC of detrended forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
+        if r!=0:
+            plt.title("%s %s %s ACC of %s (detrended) from %i to %i" % (CANSIPS, str.capitalize(version), metric, region, min(years),(max(years)+1)))
+        else:
+            plt.title("%s %s %s ACC of detrended forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
     else:
-        plt.title("%s %s %s ACC of forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
+        if r!=0:
+            plt.title("%s %s %s ACC of %s from %i to %i" % (CANSIPS, str.capitalize(version), metric, region, min(years),(max(years)+1)))
+        else:
+            plt.title("%s %s %s ACC of forecasts from %i to %i" % (CANSIPS, str.capitalize(version), metric, min(years),(max(years)+1)))
     if single:
         if smark==0:
             plt.title("GEM-NEMO %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years)+1)))
@@ -272,7 +322,6 @@ for version in versions:
     ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
     ax.set_yticks(np.arange(len(calendar.month_name[1:13]))+0.5)    
     ax.set_yticklabels(['0','1','2','3','4','5','6','7','8','9','10','11'])    
-    plt.xlabel("Predicted Month")    
     plt.ylabel("Lead (Months)")      
     plt.show()
     

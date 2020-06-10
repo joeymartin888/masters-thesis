@@ -8,28 +8,32 @@ Created on Wed Apr 22 10:02:45 2020
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import rms_plots as rpl
+import nc as nc
+import numpy as np
+import re
+#import cdo; c=cdo.Cdo()
 
-clevslab=np.arange(17)-1 #from rms_plots.py 
+years=range(1980,2010)
+r=13
 
-####### read data
-infile = '/home/josmarti/Projects/masters-thesis/iceregions_128_64.nc'
-lon=nc.getvar(infile,'lon')
-lat=nc.getvar(infile,'lat')
-region=nc.getvar(infile,'REG').squeeze()
-regionlabs=['-1ocean','0land','1ARC','2BER','3STL','4BAF','5GRE','6BAR','7KAR','8LAP','9ESI','10CHU','11BEA','12CAN','13HUD','14OKH']
+obsingeo=np.delete(nc.getvar('/home/josmarti/Data/Observations/had2cis_128_64_195901_202004_sic.nc', 'SICN').squeeze(), 128, 2)
+obs2mask=obsingeo[((min(years)-1959)*12):((max(years)+2-1959)*12),:,:]
+mask=nc.getvar('/home/josmarti/Data/iceregions_128_64.nc', 'REG').squeeze()
+gridpoint=nc.getvar('/home/josmarti/Data/areacella_fx_CanCM4_decadal2001_r0i0p0.nc','areacella')
+for m in range(len(mask)):
+    for n in range(len(mask[0])):
+        if mask[m,n] != r:
+            mask[m,n]=0
+        elif mask[m,n] == r:
+            mask[m,n]=1
+obs1=np.multiply(np.multiply(mask,obs2mask),gridpoint)
+obsnh=np.delete(obs1, range(32), axis=1)
+obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
+obs=np.reshape(obstemp, (31,12)).transpose()
+#var=nc.getvar('/home/josmarti/Projects/masters-thesis/tmp3.nc', 'sic')
 
-####### Plot
-fig = plt.figure(figsize=(40, 20))
 
-ax1 = fig.add_subplot(221, projection=ccrs.NorthPolarStereo())
-cs1 = ax1.contourf(lon, lat, region, 20, transform=ccrs.PlateCarree())
-ax1.set_extent([-180, 180, 48, 90], crs=ccrs.PlateCarree())
-ax1.coastlines()
-ax1.stock_img()
-ax1.set_title('Navy subregions')
 
-cbparams=dict(manticks=clevslab, manlabels=regionlabs)
-rpl.add_cb(ax1,cs1,**cbparams)
 
 
 
