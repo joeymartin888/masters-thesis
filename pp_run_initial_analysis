@@ -11,14 +11,9 @@ import rms_plots as rpl
 import nc as nc
 import numpy as np
 import re
-import calendar
-import rms_utils_boot as bt
-import CCMA_plot
 #import cdo; c=cdo.Cdo()
 
-pstyle="pc"
-
-metric='SIE'
+metric='SIV'
 
 syear=1979; eyear=2016; 
 
@@ -79,51 +74,48 @@ for e in ensembles:
         if year==2413 and e=='011': #2415 e11 seems to have an extra timestep
             geosum3=np.delete(geosum3, 12)
         monthly_matrix[years.index(year),ensembles.index(e),:]=np.concatenate((geosum1,geosum2,geosum3))
+        #run=np.concatenate([geosum1, geosum2, geosum3])
+        run=geosum1
+        if len(run)>36:
+            print("%s, %s" % (str(year), e))
+        months=range(1,13)
+        plt.plot(months, geosum1, label=('%se%s' % (str(year),e)))
+        if run_length==2:
+            plt.plot(months, geosum2, label=('%se%s' % (str(year+1),e)))
+        if run_length==3:
+            plt.plot(months, geosum2, label=('%se%s' % (str(year+1),e)))
+            plt.plot(months, geosum3, label=('%se%s' % (str(year+2),e)))
+#plt.plot(range(1,13), (np.mean(run/obsin[start:end])*obsin[start:end]), label='observations')
+plt.plot(months, mean_obs, label='mean_obs',  lw=2.5, color='black')
+plt.title("Monthly mean %s for a %i year run of %i ensembles \n (observations: %i-%i)" % (metric,run_length,len(ensembles),syear,eyear))
+if (len(years)*run_length*len(ensembles))<12:
+    plt.legend()
+#plt.legend()
+#%%
+c=['g','r','c','m','y','k']
+plt.figure(figsize=(10,7))
+plt.plot(range(syear,eyear), obs)
+if metric=='SIE':
+    old=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', 'sie').squeeze()*1e12
+    plt.plot(range(syear,syear+32),np.mean(np.reshape(old,(12,32)), axis=0), label='old obs')
+if metric=='SIA':
+    old=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', 'sia').squeeze()*1e12
+    plt.plot(range(syear,syear+32),np.mean(np.reshape(old,(12,32)), axis=0), label='old obs')
+plt.title('Observed annual mean %s with PPrun means' % metric)
+for i in range(len(monthly_matrix)):
+    plt.hlines(np.mean(monthly_matrix, axis=(1,2))[i],syear,eyear, color=c[i], label=str(years[i]))
+plt.legend()
 
 #%%
+"""    
+fig=plt.figure(figsize=(10,10))
 
-ACC=np.zeros((12,12,36))
-boot_temp=np.zeros((12,12,36), dtype=np.ndarray)
-boot=np.zeros((12,12,36), dtype=np.ndarray)
+for y in years:
+    fig.add_subplot(3,2,(years.index(y)+1), title="Std of %s" % str(y))
+    for i in range(12):
+        #plt.plot(range(days), daily_matrix[years.index(y),i,0:days], label='%s' % ensembles[i])
+        plt.plot(range(days), np.std(daily_matrix[years.index(y),:,0:days], axis=0))
+    #plt.title("First %i daily SIA values of %i for all 12 ensembles" % (days,y))
+    plt.legend()
+fig.tight_layout()"""
 
-for p in range(12):
-    truth=monthly_matrix[:,p,:]
-    model=np.mean(np.delete(monthly_matrix, p, axis=1), axis=1)
-    for y in range(36):
-        if y<12:
-            ACC[p,y,y]=np.corrcoef(model[:,y],truth[:,y])[1,0]
-            boot_temp[p,y,y]=bt.calc_corr_boot(model[:,y],truth[:,y],1000)
-            boot[p,y,y]=bt.calc_boot_stats(boot_temp[p,y,y],sides=1,pval_threshold=0.05)[1]
-        elif y<24:
-            ACC[p,y-12,y]=np.corrcoef(model[:,y],truth[:,y])[1,0]
-            boot_temp[p,y-12,y]=bt.calc_corr_boot(model[:,y],truth[:,y],1000)
-            boot[p,y-12,y]=bt.calc_boot_stats(boot_temp[p,y-12,y],sides=1,pval_threshold=0.05)[1]
-        else:
-            ACC[p,y-24,y]=np.corrcoef(model[:,y],truth[:,y])[1,0]
-            boot_temp[p,y-24,y]=bt.calc_corr_boot(model[:,y],truth[:,y],1000)
-            boot[p,y-24,y]=bt.calc_boot_stats(boot_temp[p,y-24,y],sides=1,pval_threshold=0.05)[1]
-
-#%%         
-fig, ax = plt.subplots(figsize=(4,9))
-if pstyle == "pc":
-    pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
-    pc=rpl.add_pc(ax,range(13),range(37),np.mean(ACC, axis=0).transpose(),**pcparams)
-elif pstyle == "cf":
-    pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
-    pc=rpl.add_cf(ax,range(1,13),range(1,37),ACC,**pcparams)
-for month in range(len(boot[:,0])):
-            for lead in range(len(boot[0,:])):
-                if np.mean(boot, axis=0)[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
-                    plt.scatter((month+0.5),(lead+0.5), color = 'black', s=20)
-plt.title("Forecast skill for %s of January initializion of PP_run" % metric)
-plt.colorbar(pc)
-ax.invert_xaxis
-ax.invert_yaxis
-ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
-ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
-ax.set_yticks(np.arange(36)+0.5)    
-ax.set_yticklabels(range(36))  
-plt.xlabel("Predicted Month")    
-plt.ylabel("Lead (Months)")      
-plt.show()            
-        

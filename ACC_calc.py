@@ -22,7 +22,7 @@ from scipy import signal
 import rms_utils_boot as bt
 
 #'-1ocean','0land','1ARC','2BER','3STL','4BAF','5GRE','6BAR','7KAR','8LAP','9ESI','10CHU','11BEA','12CAN','13HUD','14OKH'
-region="13HUD" 
+region="0NONE" 
 
 if region[1].isdigit():
     r=int(region[0:2])
@@ -32,10 +32,14 @@ else:
 #Select metric
 metric="SIA"
 
-obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
+#Select observation data set
+Data="Had2CIS"
+
+#obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
 
 #Select Year Range
-years=range(1980,2010)
+years=range(1980,2019)
+period=max(years) - min(years)
 
 sim=np.zeros((12,12,len(years)))
 
@@ -54,7 +58,7 @@ if r !=0 :
     obsnh=np.delete(obs1, range(32), axis=1)
     obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
     obs2mask=obstemp[((min(years)-1959)*12):((max(years)+2-1959)*12)]
-    obs=np.reshape(obs2mask, (31,12)).transpose()
+    obs=np.reshape(obs2mask, ((period+2),12)).transpose()
 else:
     obsingeo=np.delete(nc.getvar('/home/josmarti/Data/Observations/had2cis_128_64_195901_202004_sic.nc', 'SICN').squeeze(), 128, 2)
     gridpoint=nc.getvar('/home/josmarti/Data/areacella_fx_CanCM4_decadal2001_r0i0p0.nc','areacella')
@@ -62,15 +66,18 @@ else:
     obsnh=np.delete(obs1, range(32), axis=1)
     obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
     obs2mask=obstemp[((min(years)-1959)*12):((max(years)+2-1959)*12)]
-    obs=np.reshape(obs2mask, (31,12)).transpose()
-    #obs=np.delete((np.reshape(obsin, (32,12)).transpose()),range(min(years)-1979),1)
+    if Data == "Had2CIS":
+        obs=np.reshape(obs2mask, ((period+2),12)).transpose()
+    elif Data == "NSIDC":
+        obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
+        obs=np.delete((np.reshape(obsin, ((period+3),12)).transpose()),range(min(years)-1979),1)
 
 #Select CANSIPS v1 or v2
-CANSIPS="v1"
-#CANSIPSes=["v1", "v2"]
+#CANSIPS="v1"
+CANSIPSes=["v1", "v2"]
 
 #Option for linear detrending
-detrend=False
+detrend=True
 
 #Display persistence forecast
 show_persistence=True
@@ -79,8 +86,8 @@ show_persistence=True
 single=False
 
 #Select OLD or NEW
-#version="NEW"
-versions=["OLD", "NEW"]
+version="NEW"
+#versions=["OLD", "NEW"]
 
 #Set plot style
 pstyle = "pc"
@@ -92,7 +99,10 @@ persistence=np.zeros(sim.shape)
 obs_pers=np.zeros(obs.shape)
 obs_pers[0:11,:]=obs[0:11,:]
 #if r!=0:
-obs_pers[11,0]=obstemp[(min(years)-1-1959)*12+11]
+if Data == "Had2CIS":
+    obs_pers[11,0]=obstemp[(min(years)-1-1959)*12+11]
+elif Data == "NSIDC":
+    obs_pers[11,0]=obsin[(min(years)-1980)*12+11]
 #else:    
  #   obs_pers[11,0]=obsin[(min(years)-1980)*12+11]
 obs_pers[11,1::]=obs[11,0:-1]
@@ -111,8 +121,8 @@ if detrend:
 
 diff=0  
 #%%    
-for version in versions:
-#for CANSIPS in CANSIPSes:
+#for version in versions:
+for CANSIPS in CANSIPSes:
 #for smark in range(2):    
     #Select SIE or SIA
 
@@ -293,14 +303,17 @@ for version in versions:
     plt.colorbar(pc)
     for init in range(len(boot2[:,0])):
         for target in range(len(boot2[0,:])):
-            if boot2[init,target]>=0:
+            if boot2[init,target]==np.nan:
+                plt.scatter((target+0.5),(init+0.5), color = 'red', s=50, marker='x')
+                print("done")
+            if boot2[init,target]>0:
                 if ACC2_pers[init,target]>=ACC2[init,target]:
                     plt.scatter((target+0.5),(init+0.5), color = 'black', s=50, marker='x')
                 else:
                     plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
-            else:
+            """else:
                 if ACC2[init,target]>ACC2_pers[init,target]:
-                    plt.scatter((target+0.5),(init+0.5), color = 'blue', s=20, marker='s')
+                    plt.scatter((target+0.5),(init+0.5), color = 'blue', s=20, marker='s')"""
     if detrend:
         if r!=0:
             plt.title("%s %s %s ACC of %s (detrended) from %i to %i" % (CANSIPS, str.capitalize(version), metric, region, min(years),(max(years)+1)))
