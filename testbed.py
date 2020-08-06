@@ -82,38 +82,37 @@ for e in ensembles:
 
 #%%
 
-ACC=np.zeros((12,12,36))
-boot_temp=np.zeros((12,12,36), dtype=np.ndarray)
-boot=np.zeros((12,12,36), dtype=np.ndarray)
+ACC=np.zeros((12,36))
+boot_temp=np.zeros((12,36), dtype=np.ndarray)
+boot=np.zeros((12,36), dtype=np.ndarray)
 
-for p in range(12):
-    truth=monthly_matrix[:,p,:]
-    model=np.mean(np.delete(monthly_matrix, p, axis=1), axis=1)
-    for y in range(36):
-        if y<12:
-            ACC[p,y,y]=np.corrcoef(model[:,y],truth[:,y])[1,0]
-            boot_temp[p,y,y]=bt.calc_corr_boot(model[:,y],truth[:,y],1000)
-            boot[p,y,y]=bt.calc_boot_stats(boot_temp[p,y,y],sides=1,pval_threshold=0.05)[1]
-        elif y<24:
-            ACC[p,y-12,y]=np.corrcoef(model[:,y],truth[:,y])[1,0]
-            boot_temp[p,y-12,y]=bt.calc_corr_boot(model[:,y],truth[:,y],1000)
-            boot[p,y-12,y]=bt.calc_boot_stats(boot_temp[p,y-12,y],sides=1,pval_threshold=0.05)[1]
-        else:
-            ACC[p,y-24,y]=np.corrcoef(model[:,y],truth[:,y])[1,0]
-            boot_temp[p,y-24,y]=bt.calc_corr_boot(model[:,y],truth[:,y],1000)
-            boot[p,y-24,y]=bt.calc_boot_stats(boot_temp[p,y-24,y],sides=1,pval_threshold=0.05)[1]
+for m in range(36):
+    model=np.repeat(np.mean(monthly_matrix[:,:,m], axis=1),12)
+    truth=np.reshape(monthly_matrix[:,:,m],72)
+    if m<12:
+        ACC[m,m]=np.corrcoef(model,truth)[1,0]
+        boot_temp[m,m]=bt.calc_corr_boot(model,truth,1000)
+        boot[m,m]=bt.calc_boot_stats(boot_temp[m,m],sides=1,pval_threshold=0.05)[1]
+    elif m<24:
+        ACC[m-12,m]=np.corrcoef(model,truth)[1,0]
+        boot_temp[m-12,m]=bt.calc_corr_boot(model,truth,1000)
+        boot[m-12,m]=bt.calc_boot_stats(boot_temp[m-12,m],sides=1,pval_threshold=0.05)[1]
+    else:
+        ACC[m-24,m]=np.corrcoef(model,truth)[1,0]
+        boot_temp[m-24,m]=bt.calc_corr_boot(model,truth,1000)
+        boot[m-24,m]=bt.calc_boot_stats(boot_temp[m-24,m],sides=1,pval_threshold=0.05)[1]
 
 #%%         
 fig, ax = plt.subplots(figsize=(4,9))
 if pstyle == "pc":
-    pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
-    pc=rpl.add_pc(ax,range(13),range(37),np.mean(ACC, axis=0).transpose(),**pcparams)
+    pcparams=dict(cmap='seismic')
+    pc=rpl.add_pc(ax,range(13),range(37),ACC.transpose(),**pcparams)
 elif pstyle == "cf":
     pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
     pc=rpl.add_cf(ax,range(1,13),range(1,37),ACC,**pcparams)
 for month in range(len(boot[:,0])):
             for lead in range(len(boot[0,:])):
-                if np.mean(boot, axis=0)[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
+                if boot[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
                     plt.scatter((month+0.5),(lead+0.5), color = 'black', s=20)
 plt.title("Forecast skill for %s of January initializion of PP_run" % metric)
 plt.colorbar(pc)
