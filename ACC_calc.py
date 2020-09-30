@@ -38,7 +38,7 @@ Data="Had2CIS"
 #obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
 
 #Select Year Range
-years=range(1980,2010)
+years=range(1980,2019)
 period=max(years) - min(years)
 
 sim=np.zeros((12,12,len(years)))
@@ -46,7 +46,7 @@ sim=np.zeros((12,12,len(years)))
 #Shape observations
 if r !=0 :
     obsingeo=nc.getvar('/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc', 'SICN').squeeze()
-    obsingeo[obsingeo.mask==True]=1 #CHECK WITH MICHAEL!!!!!!
+    #obsingeo[obsingeo.mask==True]=1 #CHECK WITH MICHAEL!!!!!!
     if metric=="SIE":
         obsingeo[obsingeo <= 0.15] = 0
     mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
@@ -60,7 +60,7 @@ if r !=0 :
     obs1=np.delete(np.multiply(obsingeo.astype(float),mask.astype(float)), range(90), axis=1) #changes to dtype=float64 to avod run time error
     #obs2=obs1 #Select Northern Hemisphere
     obsnh=np.multiply(obs1,gridpoint[0:90].astype(float))
-    obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
+    obstemp=np.sum(np.sum((obsnh/1e6), axis=1), axis=1) #CHANGED FROM MEAN
     obs2mask=obstemp[((min(years)-1980)*12):((max(years)+2-1980)*12)]
     obs=np.reshape(obs2mask, ((period+2),12)).transpose()
 else:
@@ -85,7 +85,7 @@ else:
 #%%
 
 #Option for linear detrending
-detrend=True
+detrend=False
 
 #Display persistence forecast
 show_persistence=False
