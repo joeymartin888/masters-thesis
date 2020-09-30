@@ -49,6 +49,7 @@ if r !=0 :
     #obsingeo[obsingeo.mask==True]=1 #CHECK WITH MICHAEL!!!!!!
     if metric=="SIE":
         obsingeo[obsingeo <= 0.15] = 0
+        obsingeo[obsingeo > 0.15] = 1
     mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
     gridpoint=nc.getvar('/home/josmarti/Data/gridpoint_1x1.nc','areacella')
     for m in range(len(mask)):
@@ -57,9 +58,9 @@ if r !=0 :
                 mask[m,n]=0
             elif mask[m,n] == r:
                 mask[m,n]=1
-    obs1=np.delete(np.multiply(obsingeo.astype(float),mask.astype(float)), range(90), axis=1) #changes to dtype=float64 to avod run time error
+    obs1=np.multiply(obsingeo.astype(float),mask.astype(float)) #changes to dtype=float64 to avoid run time error
     #obs2=obs1 #Select Northern Hemisphere
-    obsnh=np.multiply(obs1,gridpoint[0:90].astype(float))
+    obsnh=np.multiply(obs1,gridpoint.astype(float))
     obstemp=np.sum(np.sum((obsnh/1e6), axis=1), axis=1) #CHANGED FROM MEAN
     obs2mask=obstemp[((min(years)-1980)*12):((max(years)+2-1980)*12)]
     obs=np.reshape(obs2mask, ((period+2),12)).transpose()
