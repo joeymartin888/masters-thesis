@@ -17,11 +17,11 @@ clevslab=np.arange(18)-1 #from rms_plots.py
 r=0
 
 ####### read data
-infile = '/home/josmarti/Data/reg_grid_iceregions.nc'
+infile = '/home/josmarti/Data/1x1_reg_mask.nc'
 data=Dataset(infile)
 data.set_auto_mask(False)
 
-regionlabs=['-1ocean','0land','1ARC','2BER','3STL','4BAF','5GRE','6BAR','7KAR','8LAP','9ESI','10CHU','11BEA','12CAN','13HUD','14OKH','15OTHER']
+regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
 if r != 0:
     region[region != r]=np.nan
 
@@ -29,13 +29,13 @@ if r != 0:
 ####### Plot05
 fig = plt.figure(figsize=(40, 20))
 ax1 = fig.add_subplot(221, projection=ccrs.NorthPolarStereo())
-cs1 = ax1.pcolormesh(data['lon'][:], data['lat'][120:180], data['region'][0,0,120:180,:], transform=ccrs.PlateCarree(), cmap='plasma')
+cs1 = ax1.pcolormesh(data['lon'][0:361], data['lat'][120:180], data['region'][0,0,120:180,0:361], transform=ccrs.PlateCarree(), cmap='nipy_spectral')
 ax1.set_extent([-180, 180, 48, 90], crs=ccrs.PlateCarree())
 ax1.coastlines()
 ax1.stock_img()
 #ax1.set_title('Navy subregions')
-plt.colorbar(cs1,ticks=(range(np.amin(data['region'][:]),np.amax(data['region'][:]))))
+#plt.colorbar(cs1,ticks=(range(np.amin(data['region'][:]),np.amax(data['region'][:]))))
 if r == 0:
     cbparams=dict(manticks=clevslab, manlabels=regionlabs)
-    #rpl.add_cb(ax1,cs1,**cbparams)
+    rpl.add_cb(ax1,cs1,**cbparams)
 

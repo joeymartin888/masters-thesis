@@ -105,7 +105,8 @@ for m in range(36):
 #%%         
 fig, ax = plt.subplots(figsize=(4,9))
 if pstyle == "pc":
-    pcparams=dict(cmap='seismic')
+    #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+    pcparams=dict(clevs=np.arange(-1,1,0.00785),cmap='seismic')
     pc=rpl.add_pc(ax,range(13),range(37),ACC.transpose(),**pcparams)
 elif pstyle == "cf":
     pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
