@@ -14,25 +14,31 @@ import nc as nc
 from netCDF4 import Dataset
 
 clevslab=np.arange(18)-1 #from rms_plots.py 
-r=0
+r=4
 
 ####### read data
-infile = '/home/josmarti/Data/1x1_reg_mask.nc'
+infile ='/home/josmarti/Data/1x1_reg_mask.nc'
+#infile ='/home/josmarti/Data/sic_monthly_CCCma-CanCM4_NEW_1x1_grid_i20171201.nc'
+#infile = '/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc'
 data=Dataset(infile)
 data.set_auto_mask(False)
+region=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
+#mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
+#mask[mask != ]=0
 
 regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
 if r != 0:
-    region[region != r]=np.nan
-
+   region=ma.masked_where(region != r, region)
 
 ####### Plot05
 fig = plt.figure(figsize=(40, 20))
 ax1 = fig.add_subplot(221, projection=ccrs.NorthPolarStereo())
-cs1 = ax1.pcolormesh(data['lon'][0:361], data['lat'][120:180], data['region'][0,0,120:180,0:361], transform=ccrs.PlateCarree(), cmap='nipy_spectral')
+cs1 = ax1.pcolormesh(data['lon'][0:360], data['lat'][120:180], region[120:180,0:360], transform=ccrs.PlateCarree())#, cmap='nipy_spectral')
+#cs1 = ax1.pcolormesh(data['longitude'][0:361], data['latitude'][0:180], np.multiply(data['sic'][0,0,0:180,0:360],np.flip(mask[0:180,0:360])), transform=ccrs.PlateCarree(), cmap='nipy_spectral')
 ax1.set_extent([-180, 180, 48, 90], crs=ccrs.PlateCarree())
 ax1.coastlines()
 ax1.stock_img()
+plt.colorbar(cs1)
 #ax1.set_title('Navy subregions')
 #plt.colorbar(cs1,ticks=(range(np.amin(data['region'][:]),np.amax(data['region'][:]))))
 if r == 0:

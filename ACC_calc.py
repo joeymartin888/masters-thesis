@@ -21,8 +21,8 @@ import CCMA_plot
 from scipy import signal
 import rms_utils_boot as bt
 
-#'-1ocean','0land','1ARC','2BER','3STL','4BAF','5GRE','6BAR','7KAR','8LAP','9ESI','10CHU','11BEA','12CAN','13HUD','14OKH'
-region="1ARC" 
+#regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
+region="0NONE" 
 
 if region[1].isdigit():
     r=int(region[0:2])
@@ -45,23 +45,20 @@ sim=np.zeros((12,12,len(years)))
 
 #Shape observations
 if r !=0 :
-    obsingeo=nc.getvar('/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc', 'SICN').squeeze()
+    """obsingeo=nc.getvar('/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc', 'SICN').squeeze()
     #obsingeo[obsingeo.mask==True]=1 #CHECK WITH MICHAEL!!!!!!
     if metric=="SIE":
         obsingeo[obsingeo <= 0.15] = 0
         obsingeo[obsingeo > 0.15] = 1
     mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
     gridpoint=nc.getvar('/home/josmarti/Data/gridpoint_1x1.nc','areacella')
-    for m in range(len(mask)):
-        for n in range(len(mask[0])):
-            if mask[m,n] != r:
-                mask[m,n]=0
-            elif mask[m,n] == r:
-                mask[m,n]=1
+    mask[mask != r]=0
+    mask[mask == r]=1
     obs1=np.multiply(obsingeo.astype(float),mask.astype(float)) #changes to dtype=float64 to avoid run time error
     #obs2=obs1 #Select Northern Hemisphere
     obsnh=np.multiply(obs1,gridpoint.astype(float))
-    obstemp=np.sum(np.sum((obsnh/1e6), axis=1), axis=1) #CHANGED FROM MEAN
+    obstemp=np.sum(np.sum((obsnh/(1e6*2.8**2)), axis=1), axis=1) #CHANGED FROM MEAN"""
+    obstemp=nc.getvar(('/home/josmarti/Data/Observations/Observed_SIE_%i.nc' % r), 'SICN').squeeze()*2*math.pi*6.371**2
     obs2mask=obstemp[((min(years)-1980)*12):((max(years)+2-1980)*12)]
     obs=np.reshape(obs2mask, ((period+2),12)).transpose()
 else:
@@ -89,10 +86,13 @@ else:
 detrend=False
 
 #Display persistence forecast
-show_persistence=False
+show_persistence=True
+
+#Mask Low STD
+std_mask=True
 
 #Set figure titles for thesis
-thesis_figures=False
+thesis_figures=True
 titles=[]
 #Used to seperate model outputs
 single=False
@@ -118,7 +118,7 @@ obs_pers=np.zeros(obs.shape)
 obs_pers[0:11,:]=obs[0:11,:]
 #if r!=0:
 if Data == "Had2CIS":
-    obs_pers[11,0]=obstemp[(min(years)-1-1959)*12+11]
+    obs_pers[11,0]=obsin[(min(years)-1-1959)*12+11]
 elif Data == "NSIDC":
     obs_pers[11,0]=obsin[(min(years)-1980)*12+11]
 #else:    
@@ -147,7 +147,7 @@ for version in versions:
     #Select SIE or SIA
 
         
-    """if version=="NEW":
+    if version=="NEW":
         CANSIPS="v2"
     #for overall comparison"""
     
@@ -293,6 +293,16 @@ for version in versions:
         new_ACC=ACC2
         new_boot=boot_temp2
     
+    if r!=0:
+        if (len(np.std(original_obs, axis=1)[np.std(original_obs, axis=1) < 0.03])!=0 and std_mask):
+            print ("STD mask in effect")
+            for i in range(len(ACC2)):
+                if np.std(original_obs, axis=1)[i] < 0.03:
+                    boot2_pers[:,i]=-1  # 0 will be seen as significant
+                    boot2[:,i]=-1 # 0 will be seen as significant
+                    ACC2_pers[:,i]=0
+                    ACC2[:,i]=0
+    
     if show_persistence:    
         fig, ax = plt.subplots()
         
@@ -405,6 +415,12 @@ for init in range(12):
         for target in range(12):
             boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
 
+if r!=0:
+        if (len(np.std(obs, axis=1)[np.std(obs, axis=1) < 0.03])!=0 and std_mask):
+            for i in range(len(ACC)):
+                if np.std(obs, axis=1)[i] < 0.03:
+                    boot[:,i]=-1 # 0 will be seen as significant
+
 
 fig, ax = plt.subplots()
 if pstyle == "pc":
@@ -416,7 +432,7 @@ elif pstyle == "cf":
 plt.colorbar(pc)
 for init in range(len(boot[:,0])):
     for target in range(len(boot[0,:])):
-        if boot[init,target]>=0:
+        if boot[init,target]>0:
             plt.scatter((target+0.5),(init+0.5), color = 'black', s=40, marker='^')
 if detrend:
     plt.title("Difference in ACC of detrended forecasts from %i to %i" % (min(years),(max(years))))
