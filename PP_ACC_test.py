@@ -21,6 +21,15 @@ import math as math
 #import cdo; c=cdo.Cdo()
 
 #%%
+cyears=range(2300,2449)
+control=np.zeros((12,len(cyears)))
+
+for year in cyears:
+    control[:,cyears.index(year)]=nc.getvar(('/home/josmarti/Data/CanCM4_control/SIE/sc_dhfp1e_e001_%i_SIE.nc' % year), 'sicn').squeeze()*2*math.pi*6.371**2
+
+#%%
+
+data=loadmat('/home/josmarti/Downloads/SIE_16.mat')
 
 pstyle="pc"
 
@@ -94,10 +103,14 @@ for i in range(6):
             monthly_matrix[i,(12*years.index(year)+ensembles.index(e)),:]=geosum1
 
 #%%
-for j in range(6):            
+"""for j in range(6):            
     monthly_matrix[j,:,:]=np.reshape(np.transpose(loadmat('/home/josmarti/Downloads/SIE_16.mat')['metric_ensemble'][:,j,:,:], (0,2,1)), (72,36))
-
+#"""
 #%%
+
+#clim_mean=data['control_clim']
+clim_mean=np.mean(control, axis=1, keepdims=True).transpose()
+    
 model=np.zeros((6,72,36))
 truth=np.zeros((6,72,36))
 
@@ -116,19 +129,37 @@ for i in range(0,12,2):
     for m in range(36):
         #model=np.repeat(np.mean(monthly_matrix[:,:,m], axis=1),12)
         #truth=np.reshape(monthly_matrix[:,:,m],72)
-        if m<12:
-            ACC[m-i,m]=np.corrcoef(model[(i/2),:,m],truth[(i/2),:,m])[1,0]
-            boot_temp[m-i,m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
-            boot[m-i,m]=bt.calc_boot_stats(boot_temp[m-i,m],sides=1,pval_threshold=0.05)[1]
-        elif m<24:
-            ACC[m-12-i,m]=np.corrcoef(model[(i/2),:,m],truth[(i/2),:,m])[1,0]
-            boot_temp[m-12-i,m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
-            boot[m-12-i,m]=bt.calc_boot_stats(boot_temp[m-12-i,m],sides=1,pval_threshold=0.05)[1]
+        if (m+i)<12:
+            ACC[(i-12+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-12+m)],clim_mean[0,(i-12+m)])
+            boot_temp[(i-12+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
+            boot[(i-12+m),m]=bt.calc_boot_stats(boot_temp[(i-12+m),m],sides=1,pval_threshold=0.05)[1]
+        elif (m+i)<24:
+            ACC[(i-24+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-24+m)],clim_mean[0,(i-24+m)])
+            boot_temp[(i-24+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
+            boot[(i-24+m),m]=bt.calc_boot_stats(boot_temp[(i-24+m),m],sides=1,pval_threshold=0.05)[1]
         else:
-            ACC[m-24-i,m]=np.corrcoef(model[(i/2),:,m],truth[(i/2),:,m])[1,0]
-            boot_temp[m-24-i,m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
-            boot[m-24-i,m]=bt.calc_boot_stats(boot_temp[m-24-i,m],sides=1,pval_threshold=0.05)[1]
+            ACC[(i-36+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-36+m)],clim_mean[0,(i-36+m)])
+            boot_temp[(i-36+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
+            boot[(i-36+m),m]=bt.calc_boot_stats(boot_temp[(i-36+m),m],sides=1,pval_threshold=0.05)[1]
 
+#Interpolate ACCs
+for j in range(1,12,2):
+    ACC[j,0]=ACC[j-13,0]+0.5*(ACC[j-11,0]-ACC[j-13,0])
+    boot_temp[j,0]=boot_temp[j-13,0]+0.5*(boot_temp[j-11,0]-boot_temp[j-13,0])
+    boot[j,0]=bt.calc_boot_stats(boot_temp[j,0],sides=1,pval_threshold=0.05)[1]
+    for n in range(2,35,2):
+        ACC[j,n]=ACC[j,n-37]+0.5*(ACC[j,n-35]-ACC[j,n-37])
+        boot_temp[j,n]=boot_temp[j,n-37]+0.5*(boot_temp[j,n-35]-boot_temp[j,n-37])
+        boot[j,n]=bt.calc_boot_stats(boot_temp[j,n],sides=1,pval_threshold=0.05)[1]
+    
+for k in range(0,12,2):
+    ACC[k,35]=ACC[k-1,35]+0.5*(ACC[k+1,35]-ACC[k-1,35])
+    boot_temp[k,35]=boot_temp[k-1,35]+0.5*(boot_temp[k+1,35]-boot_temp[k-1,35])
+    boot[k,35]=bt.calc_boot_stats(boot_temp[k,35],sides=1,pval_threshold=0.05)[1]
+    for p in range(1,34,2):
+        ACC[k,p]=ACC[k,p-1]+0.5*(ACC[k,p+1]-ACC[k,p-1])
+        boot_temp[k,p]=boot_temp[k,p-1]+0.5*(boot_temp[k,p+1]-boot_temp[k,p-1])
+        boot[k,p]=bt.calc_boot_stats(boot_temp[k,p],sides=1,pval_threshold=0.05)[1]
 #%%         
 
 #ACC=data['ACC_year_target']

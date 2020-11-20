@@ -146,6 +146,45 @@ if testcode:
     print 'pval: '          + str(pval) 
     print 'CONF INTERVAL: ' + str(boot_mean-boot_min)
     
+##############################################################################
+    
+def calc_corr_choose(x,y,x_mean,y_mean):
+    """ Compute Correlation between x and y
+
+    Parameters
+    ----------
+    x : timeseries 1 [time,...]
+    y : timeseries 2 [time,...]
+    x_mean:
+    y_mean:
+
+    Returns
+    -------
+    corr: correlation between x and y [can be multidimensional]
+
+Created on Thu Oct 27 11:15:11 2016
+
+@author: acrnrms
+"""
+    nt=np.shape(x)[0]
+    #calculate anomalies
+    x_a = x - x_mean
+    y_a = y - y_mean
+    #calculate covariance
+    cov = np.sum(x_a*y_a,axis=0)/(nt-1)
+    #calculate standard deviations
+    std_x = np.sqrt(np.sum(x_a**2.,axis=0)/(nt-1))
+    std_y = np.sqrt(np.sum(y_a**2.,axis=0)/(nt-1))
+    #calculate rho (correlation coefficient)
+    corr = cov/(std_x*std_y)
+    #print corr
+    if np.size(np.shape(x))==1:    
+        if np.isnan(corr): corr=0.0
+    else:
+        corr[np.isnan(corr)==True] = 0.0
+    return corr
+    
+##############################################################################
 
 
 

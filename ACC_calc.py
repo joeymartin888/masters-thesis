@@ -13,13 +13,14 @@ import math as math
 import nc as nc
 import numpy as np
 import array as ar
-import matplotlib.colors
+from matplotlib import colors
 import matplotlib.pyplot as plt
 import calendar
 import rms_plots as rpl
 import CCMA_plot
 from scipy import signal
 import rms_utils_boot as bt
+from scipy.io import loadmat
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
 region="0NONE" 
@@ -83,7 +84,7 @@ else:
 #%%
 
 #Option for linear detrending
-detrend=False
+detrend=True
 
 #Display persistence forecast
 show_persistence=True
@@ -92,10 +93,14 @@ show_persistence=True
 std_mask=True
 
 #Set figure titles for thesis
-thesis_figures=True
+thesis_figures=False
 titles=[]
+
+#Mitch's colors
+jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3') 
+
 #Used to seperate model outputs
-single=False
+single=True
 
 
 #Select CANSIPS v1 or v2
@@ -103,8 +108,9 @@ CANSIPS="v1"
 #CANSIPSes=["v1", "v2"]
 
 #Select OLD or NEW
-#version="NEW"
-versions=["OLD", "NEW"]
+version="NEW"
+#version="OLD"
+#versions=["OLD", "NEW"]
 #versions=["OLD/1x1_trial", "NEW/1x1_trial"]
 
 #Set plot style
@@ -141,13 +147,13 @@ if detrend:
 
 diff=0  
 #%%    
-for version in versions:
+#for version in versions:
 #for CANSIPS in CANSIPSes:
-#for smark in range(2):    
+for smark in range(2):    
     #Select SIE or SIA
 
         
-    if version=="NEW":
+    """if version=="NEW":
         CANSIPS="v2"
     #for overall comparison"""
     
@@ -306,7 +312,8 @@ for version in versions:
     if show_persistence:    
         fig, ax = plt.subplots()
         
-        pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+        pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
+        #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
         pc=rpl.add_pc(ax,range(13),range(13),ACC2_pers,**pcparams)
         plt.colorbar(pc)
         for init in range(len(boot2_pers[:,0])):
@@ -331,7 +338,8 @@ for version in versions:
     print("%s" % Data)
     fig, ax = plt.subplots()
     if pstyle == "pc":
-        pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+        pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
+        #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
         pc=rpl.add_pc(ax,range(13),range(13),ACC2,**pcparams)
         #ss=rpl.add_sc(ax,range(13),range(13),boot2)
     elif pstyle == "cf":
