@@ -21,16 +21,18 @@ echo $reg
 #	    echo $fileout_sia
 
 	    cdo remapbil,~/Data/1x1_reg_mask.nc $filein tmp2.nc
-	    ncks -v LSMASK ~/Data/lsmask_cansipsv2.nc lsmask_cansipsv2_maskonly.nc
-	    cdo mul tmp2.nc lsmask_cansipsv2_maskonly.nc tmpmulmask.nc
+	    cdo -setmisstoc,1 tmp2.nc tmp2fixed.nc
+	    ncks -v LSMASK ~/Data/lsmask_cansipsv2_sea.nc lsmask_cansipsv2_maskonly.nc
+	    cdo mul tmp2fixed.nc lsmask_cansipsv2_maskonly.nc tmpmulmask.nc
 	    cdo -gtc,0.15 tmpmulmask.nc tmp3.nc  	    
 	    cdo mul tmp3.nc ~/Data/Observations/tmpmask.nc tmpmul.nc
 	    #ncks -v SICN tmpmul.nc tmp.nc  #extracts SIC 
 	    cdo  -fldmean -sellonlatbox,0,360,0,90 tmpmul.nc $fileout_sie 
 #	    cdo  -fldmean -sellonlatbox,0,360,0,90 tmp.nc  SIA/$fileout_sia >& /dev/null
 
-	    /bin/rm tmp.nc tmp2.nc tmpmul.nc tmp3.nc tmpmulmask.nc lsmask_cansipsv2_maskonly.nc
+	    /bin/rm tmp.nc tmp2.nc tmpmul.nc tmp3.nc tmpmulmask.nc lsmask_cansipsv2_maskonly.nc tmp2fixed.nc
   
 rm ~/Data/Observations/tmpmask.nc
+
 done   
     

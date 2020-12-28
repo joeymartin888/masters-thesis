@@ -23,7 +23,7 @@ import rms_utils_boot as bt
 from scipy.io import loadmat
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="0NONE" 
+region="1ARC" 
 
 if region[1].isdigit():
     r=int(region[0:2])
@@ -59,8 +59,8 @@ if r !=0 :
     #obs2=obs1 #Select Northern Hemisphere
     obsnh=np.multiply(obs1,gridpoint.astype(float))
     obstemp=np.sum(np.sum((obsnh/(1e6*2.8**2)), axis=1), axis=1) #CHANGED FROM MEAN"""
-    obstemp=nc.getvar(('/home/josmarti/Data/Observations/Observed_SIE_%i.nc' % r), 'SICN').squeeze()*2*math.pi*6.371**2
-    obs2mask=obstemp[((min(years)-1980)*12):((max(years)+2-1980)*12)]
+    obsin=nc.getvar(('/home/josmarti/Data/Observations/Observed_SIE_%i.nc' % r), 'SICN').squeeze()*2*math.pi*6.371**2
+    obs2mask=obsin[((min(years)-1980)*12):((max(years)+2-1980)*12)]
     obs=np.reshape(obs2mask, ((period+2),12)).transpose()
 else:
     obsingeo=np.delete(nc.getvar('/home/josmarti/Data/Observations/had2cis_128_64_195901_202004_sic.nc', 'SICN').squeeze(), 128, 2)
@@ -84,7 +84,7 @@ else:
 #%%
 
 #Option for linear detrending
-detrend=True
+detrend=False
 
 #Display persistence forecast
 show_persistence=True
@@ -93,19 +93,20 @@ show_persistence=True
 std_mask=True
 
 #Set figure titles for thesis
-thesis_figures=False
+thesis_figures=True
 titles=[]
 
 #Mitch's colors
 jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3') 
 
 #Used to seperate model outputs
-single=True
+single=False
 
 
 #Select CANSIPS v1 or v2
-CANSIPS="v1"
-#CANSIPSes=["v1", "v2"]
+#CANSIPS="v1"
+CANSIPSes=["v1", "v2"]
+#CANSIPS="v2"
 
 #Select OLD or NEW
 version="NEW"
@@ -148,8 +149,8 @@ if detrend:
 diff=0  
 #%%    
 #for version in versions:
-#for CANSIPS in CANSIPSes:
-for smark in range(2):    
+for CANSIPS in CANSIPSes:
+#for smark in range(2):    
     #Select SIE or SIA
 
         
@@ -185,6 +186,7 @@ for smark in range(2):
                     var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM4_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()#.transpose()
                 var=np.concatenate((var3,var4), axis=1)
                 if single:
+                    print("Single Model")
                     if smark==0:
                         var=var3
                     elif smark==1:
@@ -338,8 +340,8 @@ for smark in range(2):
     print("%s" % Data)
     fig, ax = plt.subplots()
     if pstyle == "pc":
-        pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
-        #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+        #pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
+        pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
         pc=rpl.add_pc(ax,range(13),range(13),ACC2,**pcparams)
         #ss=rpl.add_sc(ax,range(13),range(13),boot2)
     elif pstyle == "cf":
@@ -373,7 +375,10 @@ for smark in range(2):
         if smark==0:
             plt.title("GEM-NEMO %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years))))
         elif smark==1:
-            plt.title("CanCM4i %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years))))
+            if r!=0:
+                plt.title("%s Operational Skill" % region, fontsize=20)
+            else:
+                plt.title("CanCM4 Operational Skill", fontsize=20)
     if thesis_figures:
         print("%s" % metric)
         if CANSIPS=="v1":
@@ -396,7 +401,9 @@ for smark in range(2):
     plt.xlabel("Target Month", fontsize=15)      
     plt.show()
     
-    #np.save(('temp/%s%s' % (CANSIPS, version)), ACC2[:,1])
+    if single:
+        if smark == 1:
+            np.save('temp/%s' % region, ACC2)
     
 #%%     
    

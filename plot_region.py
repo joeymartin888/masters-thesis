@@ -19,7 +19,7 @@ import nc as  nc
 ###############################################################################
 #######READ########## #########################################################
 ###############################################################################
-infile = '/home/josmarti/Projects/masters-thesis/iceregions_128_64.nc'
+infile = '/home/josmarti/Data/iceregions_128_64.nc'
 lon=nc.getvar(infile,'lon')
 lat=nc.getvar(infile,'lat')
 region=nc.getvar(infile,'REG').squeeze()
@@ -47,7 +47,7 @@ cbar=fig.colorbar(pc,cax=cax,orientation='vertical',ticks=clevslab)
 cbar.ax.set_yticklabels(regionlabs)
 cbar.ax.tick_params(labelsize=6,pad=1,length=0.1)
 ######save####################################################################
-fig.savefig('regions.png',dpi=400)
+#fig.savefig('regions.png',dpi=400)
 
 
 
