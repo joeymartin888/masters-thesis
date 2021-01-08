@@ -23,7 +23,7 @@ import rms_utils_boot as bt
 from scipy.io import loadmat
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="1ARC" 
+region="7CHU" 
 
 if region[1].isdigit():
     r=int(region[0:2])
@@ -84,7 +84,7 @@ else:
 #%%
 
 #Option for linear detrending
-detrend=False
+detrend=True
 
 #Display persistence forecast
 show_persistence=True
