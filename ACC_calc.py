@@ -21,9 +21,10 @@ import CCMA_plot
 from scipy import signal
 import rms_utils_boot as bt
 from scipy.io import loadmat
+import Mitch_detrend as md
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="7CHU" 
+region="0NONE" 
 
 if region[1].isdigit():
     r=int(region[0:2])
@@ -68,12 +69,12 @@ else:
     obs1=np.multiply(obsingeo,gridpoint)
     obsnh=np.delete(obs1, range(32), axis=1)
     obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
-    obs2mask=obstemp[((min(years)-1959)*12):((max(years)+2-1959)*12)]
+    obs2mask=obstemp[((min(years)-1959)*12):((max(years)+2-1959)*12)] 
     if Data == "Had2CIS":
         if metric == "SIA":
             obs=np.reshape(obs2mask, ((period+2),12)).transpose()
         elif metric == "SIE":
-            obsin=nc.getvar('/home/josmarti/Data/Observations/had2cisSIE.nc', 'SICN').squeeze()[((min(years)-1959)*12):((max(years)+2-1959)*12)]
+            obsin=nc.getvar('/home/josmarti/Data/Observations/had2cisSIE.nc', 'SICN').squeeze()[((min(years)-1959)*12):((max(years)+2-1959)*12)] 
             obs=np.reshape(obsin, ((period+2),12)).transpose()
     elif Data == "NSIDC":
         obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
@@ -87,10 +88,17 @@ else:
 detrend=True
 
 #Display persistence forecast
-show_persistence=True
+show_persistence=False
 
 #Mask Low STD
 std_mask=True
+
+if std_mask:
+    mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
+    gridpoint=nc.getvar('/home/josmarti/Data/gridpoint_1x1.nc','areacella')
+    mask[mask != r]=0
+    mask[mask == r]=1
+    area=np.sum(np.multiply(gridpoint,mask))
 
 #Set figure titles for thesis
 thesis_figures=True
@@ -104,14 +112,14 @@ single=False
 
 
 #Select CANSIPS v1 or v2
-#CANSIPS="v1"
-CANSIPSes=["v1", "v2"]
+CANSIPS="v1"
+#CANSIPSes=["v1", "v2"]
 #CANSIPS="v2"
 
 #Select OLD or NEW
-version="NEW"
+#version="NEW"
 #version="OLD"
-#versions=["OLD", "NEW"]
+versions=["OLD", "NEW"]
 #versions=["OLD/1x1_trial", "NEW/1x1_trial"]
 
 #Set plot style
@@ -141,15 +149,15 @@ for init in range(12):
             
 original_obs=obs #used for standard deviation
 
-if detrend:
+if detrend: #sim detrended below
     persistence=signal.detrend(persistence)
     obs=signal.detrend(obs)
-    
+    #obs=md.Mitch_detrend(obs)
 
 diff=0  
 #%%    
-#for version in versions:
-for CANSIPS in CANSIPSes:
+for version in versions:
+#for CANSIPS in CANSIPSes:
 #for smark in range(2):    
     #Select SIE or SIA
 
@@ -207,7 +215,8 @@ for CANSIPS in CANSIPSes:
                     
         
     if detrend:
-        sim=signal.detrend(sim)         #Linear detrending  
+        #sim=signal.detrend(sim)         #Linear detrending, obs detrended above 
+        sim=md.Mitch_detrend(sim)
                 
         """for i in range(12):                #Polynomial detrending
             for j in range(12):
@@ -302,10 +311,10 @@ for CANSIPS in CANSIPSes:
         new_boot=boot_temp2
     
     if r!=0:
-        if (len(np.std(original_obs, axis=1)[np.std(original_obs, axis=1) < 0.03])!=0 and std_mask):
+        if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
             print ("STD mask in effect")
             for i in range(len(ACC2)):
-                if np.std(original_obs, axis=1)[i] < 0.03:
+                if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
                     boot2_pers[:,i]=-1  # 0 will be seen as significant
                     boot2[:,i]=-1 # 0 will be seen as significant
                     ACC2_pers[:,i]=0
@@ -431,9 +440,9 @@ for init in range(12):
             boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
 
 if r!=0:
-        if (len(np.std(obs, axis=1)[np.std(obs, axis=1) < 0.03])!=0 and std_mask):
+        if (len(np.std(obs, axis=1)[((np.std(obs, axis=1)*1e15)/np.sum(area)) < 0.8])!=0 and std_mask):
             for i in range(len(ACC)):
-                if np.std(obs, axis=1)[i] < 0.03:
+                if ((np.std(obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
                     boot[:,i]=-1 # 0 will be seen as significant
 
 

@@ -1,0 +1,23 @@
+Spring Predictability Barrier - Pan-Arctic, May (GIN Seas, Barents, Kara, Laptev, ESI, Chuckchi), April (Beaufort), No Skill until Summer (Hudson Bay and Baffin Bay)
+
+Pan Arctic - two "lobes" around April and September
+
+Lobes in other regions: Bering Sea (March, April), Labrador Sea (February, March), strong skill in all the Barents Sea - less so in GIN
+
+Lower skill than in other models in the Labrador Sea
+
+Dirth of Skill North of Siberia for longer lead times (parabolic)
+
+No Skill outside of September-0 for Central Arctic
+
+Hudson Bay - Highest Skill in the melt (lead 4) and freeze (lead 5) seasons
+Baffin Bay - Highest Skill in the melt (lead 4) and freeze (lead 6) seasons
+
+These are past the spring predictability barrier (March)
+
+
+
+
+
+
+
