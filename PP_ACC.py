@@ -20,7 +20,7 @@ from scipy.io import loadmat
 import math as math
 #import cdo; c=cdo.Cdo()
 
-auto_corr=False
+auto_corr=True
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
 region="0NONE" 
@@ -68,7 +68,7 @@ PIOMAS=np.loadtxt('/home/josmarti/Data/Observations/PIOMAS_SIV_monthly_1979-2020
 if metric=='SIV':
     mean_obs=np.mean(PIOMAS[(syear-1979):(eyear-1979)], axis=0)*1e12
 
-years=[2312, 2435, 2413, 2356, 2387, 2332]
+years=[2312, 2435, 2413, 2356, 2387, 2332] #from low to high SIV anomaly
 ensembles=["%03d" % i for i in range(1,13)]
 #ensembles=["001"]
 run_length=1 #years
@@ -78,7 +78,7 @@ smonth=["%02d" % i for i in range(1,12,2)]
 emonth=["%02d" % i for i in range(0,12,2)]
 emonth[0]="12"
 
-monthly_matrix=np.zeros((6,72,36))
+monthly_matrix=np.zeros((6,(len(years)*12),36))
 
 for i in range(6):
     if i == 0:
@@ -119,16 +119,17 @@ for i in range(6):
             monthly_matrix[i,(12*years.index(year)+ensembles.index(e)),:]=geosum1
 
 #%%
-"""for j in range(6): #MITCH DATA 1/2
+for j in range(6): #MITCH DATA 1/3
     monthly_matrix[j,:,:]=np.reshape(np.transpose(loadmat('/home/josmarti/Downloads/SIE_16.mat')['metric_ensemble'][:,j,:,:], (0,2,1)), (72,36))
 #"""
 #%%
 
-#clim_mean=data['control_clim'] #MITCH DATA 2/2
-clim_mean=np.mean(control, axis=1, keepdims=True).transpose()
+clim_mean=data['control_clim'] #MITCH DATA 2/3
+control=np.reshape(data['metric_control'], (300,12)).transpose() #MITCH DATA 3/3
+#clim_mean=np.mean(control, axis=1, keepdims=True).transpose()
     
-model=np.zeros((6,72,36))
-truth=np.zeros((6,72,36))
+model=np.zeros((6,(len(years)*12),36))
+truth=np.zeros((6,(len(years)*12),36))
 
 ACC=np.zeros((12,36))
 boot_temp=np.zeros((12,36), dtype=np.ndarray)
@@ -138,8 +139,23 @@ if auto_corr:
     auto=np.zeros((12,36))
     boot_temp_auto=np.zeros((12,36), dtype=np.ndarray)
     boot_auto=np.zeros((12,36), dtype=np.ndarray)
+    for i in range(12):
+        for j in range(36):
+            if (i-j-1)<0:
+                auto[i,j]=np.corrcoef(control[(i-((j % 12)+1)),0:-((j/12)+1)],control[i,((j/12)+1)::])[1,0]
+                boot_temp_auto[i,j]=bt.calc_corr_boot(control[(i-((j % 12)+1)),0:-((j/12)+1)],control[i,((j/12)+1)::], 1000)
+                boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
+            else:
+                if (j/12)==0:
+                    auto[i,j]=np.corrcoef(control[(i-((j % 12)+1)),:],control[i,:])[1,0]
+                    boot_temp_auto[i,j]=bt.calc_corr_boot(control[(i-((j % 12)+1)),:],control[i,:], 1000)
+                    boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
+                else:
+                    auto[i,j]=np.corrcoef(control[(i-((j % 12)+1)),0:-(j/12)],control[i,(j/12)::])[1,0]
+                    boot_temp_auto[i,j]=bt.calc_corr_boot(control[(i-((j % 12)+1)),0:-(j/12)],control[i,(j/12)::], 1000)
+                    boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
 
-for y in range(6):
+for y in range(len(years)):
     for e in range(12):
         model[:,(y*12+e),:]=np.mean(np.delete(monthly_matrix[:,y*12:y*12+12,:], e, axis=1), axis=1)
         #truth[:,e,:]=monthly_matrix[]
@@ -154,26 +170,15 @@ for i in range(0,12,2):
             ACC[(i-12+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-12+m)],clim_mean[0,(i-12+m)])
             boot_temp[(i-12+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
             boot[(i-12+m),m]=bt.calc_boot_stats(boot_temp[(i-12+m),m],sides=1,pval_threshold=0.05)[1]
-            if auto_corr:
-                auto[(i-12+m),m]=np.corrcoef(truth[(i/2),:,0],truth[(i/2),:,m])[1,0]
-                boot_temp_auto[(i-12+m),m]=bt.calc_corr_boot(truth[(i/2),:,0],truth[(i/2),:,m],1000)
-                boot_auto[(i-12+m),m]=bt.calc_boot_stats(boot_temp_auto[(i-12+m),m],sides=1,pval_threshold=0.05)[1]
         elif (m+i)<24:
             ACC[(i-24+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-24+m)],clim_mean[0,(i-24+m)])
             boot_temp[(i-24+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
             boot[(i-24+m),m]=bt.calc_boot_stats(boot_temp[(i-24+m),m],sides=1,pval_threshold=0.05)[1]
-            if auto_corr:
-                auto[(i-24+m),m]=np.corrcoef(truth[(i/2),:,0],truth[(i/2),:,m])[1,0]
-                boot_temp_auto[(i-24+m),m]=bt.calc_corr_boot(truth[(i/2),:,0],truth[(i/2),:,m],1000)
-                boot_auto[(i-24+m),m]=bt.calc_boot_stats(boot_temp_auto[(i-24+m),m],sides=1,pval_threshold=0.05)[1]
         else:
             ACC[(i-36+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-36+m)],clim_mean[0,(i-36+m)])
             boot_temp[(i-36+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
             boot[(i-36+m),m]=bt.calc_boot_stats(boot_temp[(i-36+m),m],sides=1,pval_threshold=0.05)[1]
-            if auto_corr:
-                 auto[(i-36+m),m]=np.corrcoef(truth[(i/2),:,0],truth[(i/2),:,m])[1,0]
-                 boot_temp_auto[(i-36+m),m]=bt.calc_corr_boot(truth[(i/2),:,0],truth[(i/2),:,m],1000)
-                 boot_auto[(i-36+m),m]=bt.calc_boot_stats(boot_temp_auto[(i-36+m),m],sides=1,pval_threshold=0.05)[1]
+
 
 #Interpolate ACCs
 for j in range(1,12,2):
@@ -194,25 +199,7 @@ for k in range(0,12,2):
         boot_temp[k,p]=boot_temp[k,p-1]+0.5*(boot_temp[k,p+1]-boot_temp[k,p-1])
         boot[k,p]=bt.calc_boot_stats(boot_temp[k,p],sides=1,pval_threshold=0.05)[1]
         
-#Interpolate autocorr
-if auto_corr:
-    for j in range(1,12,2):
-        auto[j,0]=auto[j-13,0]+0.5*(auto[j-11,0]-auto[j-13,0])
-        boot_temp_auto[j,0]=boot_temp_auto[j-13,0]+0.5*(boot_temp_auto[j-11,0]-boot_temp_auto[j-13,0])
-        boot_auto[j,0]=bt.calc_boot_stats(boot_temp_auto[j,0],sides=1,pval_threshold=0.05)[1]
-        for n in range(2,35,2):
-            auto[j,n]=auto[j,n-37]+0.5*(auto[j,n-35]-auto[j,n-37])
-            boot_temp_auto[j,n]=boot_temp_auto[j,n-37]+0.5*(boot_temp_auto[j,n-35]-boot_temp_auto[j,n-37])
-            boot_auto[j,n]=bt.calc_boot_stats(boot_temp_auto[j,n],sides=1,pval_threshold=0.05)[1]
-        
-    for k in range(0,12,2):
-        auto[k,35]=auto[k-1,35]+0.5*(auto[k+1,35]-auto[k-1,35])
-        boot_temp_auto[k,35]=boot_temp_auto[k-1,35]+0.5*(boot_temp_auto[k+1,35]-boot_temp_auto[k-1,35])
-        boot_auto[k,35]=bt.calc_boot_stats(boot_temp_auto[k,35],sides=1,pval_threshold=0.05)[1]
-        for p in range(1,34,2):
-            auto[k,p]=auto[k,p-1]+0.5*(auto[k,p+1]-auto[k,p-1])
-            boot_temp_auto[k,p]=boot_temp_auto[k,p-1]+0.5*(boot_temp_auto[k,p+1]-boot_temp_auto[k,p-1])
-            boot_auto[k,p]=bt.calc_boot_stats(boot_temp_auto[k,p],sides=1,pval_threshold=0.05)[1]
+
 #%%         
 
 #ACC=data['ACC_year_target']
@@ -279,4 +266,5 @@ if auto_corr:
     plt.xlabel("Predicted Month")    
     plt.ylabel("Lead (Months)")      
     plt.show()      
-        
+
+np.save('temp/%s.npy' % region, ACC.transpose()[0:12])        

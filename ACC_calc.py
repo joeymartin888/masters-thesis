@@ -24,7 +24,8 @@ from scipy.io import loadmat
 import Mitch_detrend as md
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="0NONE" 
+region="14LAB" 
+region_titles=['Pan-Arctic', 'Central Arctic', 'GIN Seas', 'Barents Sea', 'Kara Sea', 'Laptev Sea', 'East Siberian Sea', 'Chukchi Sea', 'Bering Sea', 'Sea of Okhotsk', 'Beaufort Sea', 'Canadian Archipelago', 'Hudson Bay', 'Baffin Bay', 'Labrador Sea']
 
 if region[1].isdigit():
     r=int(region[0:2])
@@ -101,25 +102,26 @@ if std_mask:
     area=np.sum(np.multiply(gridpoint,mask))
 
 #Set figure titles for thesis
-thesis_figures=True
+thesis_figures=False
+region_figures=False
 titles=[]
 
 #Mitch's colors
 jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3') 
 
 #Used to seperate model outputs
-single=False
+single=True
 
 
 #Select CANSIPS v1 or v2
-CANSIPS="v1"
-#CANSIPSes=["v1", "v2"]
+#CANSIPS="v1"
+CANSIPSes=["v1", "v2"]
 #CANSIPS="v2"
 
 #Select OLD or NEW
-#version="NEW"
+version="NEW"
 #version="OLD"
-versions=["OLD", "NEW"]
+#versions=["OLD", "NEW"]
 #versions=["OLD/1x1_trial", "NEW/1x1_trial"]
 
 #Set plot style
@@ -150,15 +152,19 @@ for init in range(12):
 original_obs=obs #used for standard deviation
 
 if detrend: #sim detrended below
-    persistence=signal.detrend(persistence)
-    obs=signal.detrend(obs)
-    #obs=md.Mitch_detrend(obs)
+    #persistence=signal.detrend(persistence)
+    #obs=signal.detrend(obs)
+    obs=md.Mitch_detrend(obs)
+    persistence=md.Mitch_detrend(persistence)
+
+if single:
+    print("Single Model Active")
 
 diff=0  
 #%%    
-for version in versions:
+#for version in versions:
 #for CANSIPS in CANSIPSes:
-#for smark in range(2):    
+for smark in range(2):    
     #Select SIE or SIA
 
         
@@ -166,6 +172,7 @@ for version in versions:
         CANSIPS="v2"
     #for overall comparison"""
     
+
     
     #Build model array
     for months in range(1,13):
@@ -194,7 +201,6 @@ for version in versions:
                     var4=nc.getvar(('/home/josmarti/Data/%s/%s/%s_monthly_CanCM4_i%s%s.nc' % (version,metric,metric,y,m)),'sic').squeeze()#.transpose()
                 var=np.concatenate((var3,var4), axis=1)
                 if single:
-                    print("Single Model")
                     if smark==0:
                         var=var3
                     elif smark==1:
@@ -330,11 +336,17 @@ for version in versions:
         for init in range(len(boot2_pers[:,0])):
             for target in range(len(boot2_pers[0,:])):
                 if boot2_pers[init,target]>=0:
-                    plt.scatter((target+0.5),(init+0.5), color = 'black', s=20, marker='^')
-        if detrend:
-            plt.title("ACC for Detrended Persistence from %i to %i" % (min(years),(max(years)+1)))
-        else:
-            plt.title("ACC for Persistence from %i to %i" % (min(years),(max(years)+1)))
+                    plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+        if thesis_figures:    
+            if detrend:
+                plt.title("Detrended Anomaly Persistence Forecast", fontsize=15)
+            else:
+                plt.title("Anomaly Persistance Forecast", fontsize=15)
+        else:    
+            if detrend:
+                plt.title("ACC for Detrended Persistence from %i to %i" % (min(years),(max(years)+1)))
+            else:
+                plt.title("ACC for Persistence from %i to %i" % (min(years),(max(years)+1)))
         ax.invert_xaxis
         ax.invert_yaxis
         ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
@@ -349,8 +361,8 @@ for version in versions:
     print("%s" % Data)
     fig, ax = plt.subplots()
     if pstyle == "pc":
-        #pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
-        pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+        pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
+        #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
         pc=rpl.add_pc(ax,range(13),range(13),ACC2,**pcparams)
         #ss=rpl.add_sc(ax,range(13),range(13),boot2)
     elif pstyle == "cf":
@@ -400,6 +412,8 @@ for version in versions:
         elif CANSIPS=="v2":
                 plt.title("CanSIPSv2", fontsize=20)
                 titles.append("CanSIPSv2")
+    if region_figures:
+        plt.title("%s" % region_titles[r], fontsize=20)
     ax.invert_xaxis
     ax.invert_yaxis
     ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
@@ -410,9 +424,9 @@ for version in versions:
     plt.xlabel("Target Month", fontsize=15)      
     plt.show()
     
-    if single:
+    """if single:
         if smark == 1:
-            np.save('temp/%s' % region, ACC2)
+            np.save('temp/%s' % region, ACC2)"""
     
 #%%     
    
@@ -432,8 +446,11 @@ for version in versions:
     plt.ylabel("Initialization month")
     plt.show() """
 
-#%%  
-ACC=new_ACC-old_ACC
+#%% 
+if single:
+    ACC=np.load('temp/%s.npy' % region)-new_ACC
+else:
+    ACC=new_ACC-old_ACC
 boot_temp=new_boot-old_boot
 for init in range(12):
         for target in range(12):
@@ -444,26 +461,31 @@ if r!=0:
             for i in range(len(ACC)):
                 if ((np.std(obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
                     boot[:,i]=-1 # 0 will be seen as significant
+                    if single:
+                        ACC[:,i]=0
 
 
 fig, ax = plt.subplots()
 if pstyle == "pc":
-    pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar')
+    pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)
     pc=rpl.add_pc(ax,range(13),range(13),ACC,**pcparams)
 elif pstyle == "cf":
     pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
     pc=rpl.add_cf(ax,range(1,13),range(1,13),ACC,**pcparams)
 plt.colorbar(pc)
-for init in range(len(boot[:,0])):
-    for target in range(len(boot[0,:])):
-        if boot[init,target]>0:
-            plt.scatter((target+0.5),(init+0.5), color = 'black', s=40, marker='^')
+if not single:
+    for init in range(len(boot[:,0])):
+        for target in range(len(boot[0,:])):
+            if boot[init,target]>0:
+                plt.scatter((target+0.5),(init+0.5), color = 'black', s=40, marker='^')
 if detrend:
     plt.title("Difference in ACC of detrended forecasts from %i to %i" % (min(years),(max(years))))
 else:
     plt.title("Difference in ACC of forecasts from %i to %i" % (min(years),(max(years))))
 if thesis_figures:
     plt.title("%s - %s" % (titles[1],titles[0]), fontsize=20)
+if single:
+    plt.title("PM-OP", fontsize=20)
 ax.invert_xaxis
 ax.invert_yaxis
 ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
