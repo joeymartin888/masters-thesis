@@ -24,14 +24,17 @@ for model in $modellist; do
 					for i in `seq 0 2`; do
 						filein=sc_dhfp1e_e${e}_i${year}_m${month}_$((year+i))_m${month}_$((year+i))_m${end}_sicn.nc
 					
-						cdo remapbil,~/Data/1x1_reg_mask.nc $filein tmp5.nc						
-						ncks -v sicn tmp5.nc tmp3.nc  #extracts SIC
-						cdo -gtc,0.15 tmp3.nc tmp4.nc
+						cdo remapbil,~/Data/1x1_reg_mask.nc $filein tmp5.nc
+						cdo -setmisstoc,1 tmp5.nc tmp5fixed.nc	
+						ncks -v LSMASK ~/Data/lsmask_cansipsv2_sea.nc lsmask_cansipsv2_maskonly.nc
+	  					cdo mul tmp5fixed.nc lsmask_cansipsv2_maskonly.nc tmpmulmask.nc					
+						# ncks -v sicn tmp5.nc tmp3.nc  #extracts SIC
+						cdo -gtc,0.15 tmpmulmask.nc tmp4.nc
 						cdo mul tmp4.nc ~/Data/Observations/tmpmask.nc tmpmul.nc 
 						cdo  -fldmean -sellonlatbox,0,360,0,90 tmpmul.nc tmpy${i}.nc 
 		#				cdo  -fldmean -sellonlatbox,0,360,0,90 tmp.nc  SIA/$fileout_sia >& /dev/null
 						
-						/bin/rm tmp3.nc tmp4.nc tmp5.nc tmpmul.nc
+						/bin/rm tmp3.nc tmp4.nc tmp5.nc tmpmul.nc tmp5fixed.nc tmpmulmask.nc lsmask_cansipsv2_maskonly.nc
 					done
 				
 				fileout_sie=SIE_${model}_${region}_e${e}_i${year}${month}_$((year+2))${end}.nc
@@ -49,13 +52,16 @@ for model in $modellist; do
 					echo $fileout_sie
 
 					cdo remapbil,~/Data/1x1_reg_mask.nc $filein tmp6.nc					
-					ncks -v sicn tmp6.nc tmp.nc  #extracts SIC
-					cdo -gtc,0.15 tmp.nc tmp2.nc
+					cdo -setmisstoc,1 tmp6.nc tmp6fixed.nc	
+					ncks -v LSMASK ~/Data/lsmask_cansipsv2_sea.nc lsmask_cansipsv2_maskonly.nc
+	  				cdo mul tmp6fixed.nc lsmask_cansipsv2_maskonly.nc tmpmulmask.nc	
+					# ncks -v sicn tmp6.nc tmp.nc  #extracts SIC
+					cdo -gtc,0.15 tmpmulmask.nc tmp2.nc
 					cdo mul tmp2.nc ~/Data/Observations/tmpmask.nc tmpmul2.nc 
 					cdo  -fldmean -sellonlatbox,0,360,0,90 tmpmul2.nc SIE/$region/$fileout_sie 
 	#				cdo  -fldmean -sellonlatbox,0,360,0,90 tmp.nc  SIA/$fileout_sia >& /dev/null
 					
-					/bin/rm tmp.nc tmp2.nc tmp6.nc tmpmul2.nc
+					/bin/rm tmp.nc tmp2.nc tmp6.nc tmpmul2.nc tmp6fixed.nc tmpmulmask.nc lsmask_cansipsv2_maskonly.nc
 				fi
 			done
 		else

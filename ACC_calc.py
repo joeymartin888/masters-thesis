@@ -24,7 +24,7 @@ from scipy.io import loadmat
 import Mitch_detrend as md
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="14LAB" 
+region="8BER" 
 region_titles=['Pan-Arctic', 'Central Arctic', 'GIN Seas', 'Barents Sea', 'Kara Sea', 'Laptev Sea', 'East Siberian Sea', 'Chukchi Sea', 'Bering Sea', 'Sea of Okhotsk', 'Beaufort Sea', 'Canadian Archipelago', 'Hudson Bay', 'Baffin Bay', 'Labrador Sea']
 
 if region[1].isdigit():
@@ -82,9 +82,6 @@ else:
         obs=np.delete((np.reshape(obsin, ((period+3),12)).transpose()),range(min(years)-1979),1)
         
 
-
-#%%
-
 #Option for linear detrending
 detrend=True
 
@@ -102,8 +99,8 @@ if std_mask:
     area=np.sum(np.multiply(gridpoint,mask))
 
 #Set figure titles for thesis
-thesis_figures=False
-region_figures=False
+thesis_figures=True
+region_figures=True
 titles=[]
 
 #Mitch's colors
@@ -147,8 +144,7 @@ for init in range(12):
 	for target in range(12):
             persistence[init,target,:]=obs_mean[target]+obs_anom[init-1,0:-1] 
 
-#%%
-            
+   
 original_obs=obs #used for standard deviation
 
 if detrend: #sim detrended below
@@ -160,6 +156,68 @@ if detrend: #sim detrended below
 if single:
     print("Single Model Active")
 
+auto_corr=True
+
+if auto_corr:
+    auto=np.zeros((12,36))
+    boot_temp_auto=np.zeros((12,36), dtype=np.ndarray)
+    boot_auto=np.zeros((12,36), dtype=np.ndarray)
+    for i in range(12):
+        for j in range(36):
+            if (i-j-1)<0:
+                auto[i,j]=np.corrcoef(obs[(i-((j % 12)+1)),0:-((j/12)+1)],obs[i,((j/12)+1)::])[1,0]
+                boot_temp_auto[i,j]=bt.calc_corr_boot(obs[(i-((j % 12)+1)),0:-((j/12)+1)],obs[i,((j/12)+1)::], 1000)
+                boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
+            else:
+                if (j/12)==0:
+                    auto[i,j]=np.corrcoef(obs[(i-((j % 12)+1)),:],obs[i,:])[1,0]
+                    boot_temp_auto[i,j]=bt.calc_corr_boot(obs[(i-((j % 12)+1)),:],obs[i,:], 1000)
+                    boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
+                else:
+                    auto[i,j]=np.corrcoef(obs[(i-((j % 12)+1)),0:-(j/12)],obs[i,(j/12)::])[1,0]
+                    boot_temp_auto[i,j]=bt.calc_corr_boot(obs[(i-((j % 12)+1)),0:-(j/12)],obs[i,(j/12)::], 1000)
+                    boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
+if std_mask:
+    if r!=0:
+        if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+            print ("STD mask in effect")
+            for i in range(len(auto)):
+                if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                    boot_auto[i,:]=-1  # 0 will be seen as significant
+                    auto[i,:]=0
+
+if auto_corr:
+    fig, ax = plt.subplots(figsize=(4,9))
+    if pstyle == "pc":
+        #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar') #CCCMA
+        pcparams=dict(clevs=np.arange(-0.8,1,0.1),cmap=jet3)  #Mitch's
+        pc=rpl.add_pc(ax,range(13),range(37),auto.transpose(),**pcparams)
+    elif pstyle == "cf":
+        pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
+        pc=rpl.add_cf(ax,range(1,13),range(1,37),ACC,**pcparams)
+    for month in range(len(boot[:,0])):
+                for lead in range(len(boot[0,:])):
+                    if boot_auto[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
+                        plt.scatter((month+0.5),(lead+0.5), color = 'black', s=20)
+    if thesis_figures:
+        plt.title("%s OP" % region_titles[r], fontsize=16)
+    else:
+        if r!=0:
+            plt.title("%s Detrended Obs Autocorrelation" % region, fontsize=16)
+        else:
+            plt.title("Detrended Obs Autocorrelation", fontsize=16)
+    plt.colorbar(pc)
+    ax.invert_xaxis
+    ax.invert_yaxis
+    ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
+    ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
+    ax.set_yticks(np.arange(36)+0.5)    
+    ax.set_yticklabels(range(36))  
+    plt.xlabel("Predicted Month")    
+    plt.ylabel("Lead (Months)")      
+    plt.show()    
+
+
 diff=0  
 #%%    
 #for version in versions:
@@ -168,7 +226,7 @@ for smark in range(2):
     #Select SIE or SIA
 
         
-    """if version=="NEW":
+    if version=="NEW":
         CANSIPS="v2"
     #for overall comparison"""
     
@@ -413,7 +471,8 @@ for smark in range(2):
                 plt.title("CanSIPSv2", fontsize=20)
                 titles.append("CanSIPSv2")
     if region_figures:
-        plt.title("%s" % region_titles[r], fontsize=20)
+        print(version)
+        plt.title("%s OP" % region_titles[r], fontsize=20)
     ax.invert_xaxis
     ax.invert_yaxis
     ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
@@ -449,10 +508,17 @@ for smark in range(2):
 #%% 
 if single:
     ACC=np.load('temp/%s.npy' % region)-new_ACC
+    boot_temp=np.load('temp/%s_boot.npy' % region, allow_pickle=True)-new_boot
+    for init in range(12):
+        for target in range(12):
+            if ACC[init,target]>0:
+                boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+            else:
+                boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[2]
 else:
     ACC=new_ACC-old_ACC
-boot_temp=new_boot-old_boot
-for init in range(12):
+    boot_temp=new_boot-old_boot
+    for init in range(12):
         for target in range(12):
             boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
 
@@ -473,11 +539,15 @@ elif pstyle == "cf":
     pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
     pc=rpl.add_cf(ax,range(1,13),range(1,13),ACC,**pcparams)
 plt.colorbar(pc)
-if not single:
-    for init in range(len(boot[:,0])):
-        for target in range(len(boot[0,:])):
+
+for init in range(len(boot[:,0])):
+    for target in range(len(boot[0,:])):
+        if ACC[init,target]>0:
             if boot[init,target]>0:
-                plt.scatter((target+0.5),(init+0.5), color = 'black', s=40, marker='^')
+                plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+        elif ACC[init,target]<0:
+            if boot[init,target]<0:
+                plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
 if detrend:
     plt.title("Difference in ACC of detrended forecasts from %i to %i" % (min(years),(max(years))))
 else:
@@ -485,7 +555,7 @@ else:
 if thesis_figures:
     plt.title("%s - %s" % (titles[1],titles[0]), fontsize=20)
 if single:
-    plt.title("PM-OP", fontsize=20)
+    plt.title("%s PM-OP" % region_titles[r], fontsize=20)
 ax.invert_xaxis
 ax.invert_yaxis
 ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   

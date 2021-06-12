@@ -11,7 +11,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+#regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
+region="3BAR" 
 
+if region[1].isdigit():
+    r=int(region[0:2])
+else:
+    r=int(region[0])
+
+mask=nc.getvar('/home/josmarti/Data/iceregions_128_64.nc', 'REG').squeeze()
+mask[mask != float(r)]=0
+mask[mask == float(r)]=1
 
 years=range(2300,2449)
 
@@ -23,6 +33,8 @@ for year in years:
     sit=var/913.0 #SIT=SIC/913 kg/m3
     sia=nc.getvar(('/home/josmarti/Data/CanCM4_control/sc_dhfp1e_e001_%s_m01_%s_m12_sicn.nc' % (year,year)),'sicn').squeeze()
     siv_geo_nh=np.delete(np.multiply(sit,gridpoint), range(32), axis=1)
+    if r!=0:
+        siv_geo_nh=np.multiply(siv_geo_nh,np.delete(mask, range(32), axis=0))
     siv.iloc[0,(year-min(years))]=np.sum(siv_geo_nh)
     #siv[year]=np.sum(np.sum(siv_geo_nh, axis=2), axis=1, keepdims=True) 
   

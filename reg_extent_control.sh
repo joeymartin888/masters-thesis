@@ -16,13 +16,16 @@ for year in `seq 2300 2449`; do
 #	    echo $fileout_sia
 
     cdo remapbil,~/Data/1x1_reg_mask.nc $filein tmp3.nc
-    ncks -v sicn tmp3.nc tmp.nc  #extracts SIC
-    cdo -gtc,0.15 tmp.nc tmp2.nc 
+    cdo -setmisstoc,1 tmp3.nc tmp3fixed.nc
+    ncks -v LSMASK ~/Data/lsmask_cansipsv2_sea.nc lsmask_cansipsv2_maskonly.nc
+    cdo mul tmp3fixed.nc lsmask_cansipsv2_maskonly.nc tmpmulmask.nc
+    # ncks -v sicn tmp3.nc tmp.nc  #extracts SIC
+    cdo -gtc,0.15 tmpmulmask.nc tmp2.nc 
     cdo mul tmp2.nc ~/Data/Observations/tmpmask.nc tmpmul.nc
     cdo  -fldmean -sellonlatbox,0,360,0,90 tmpmul.nc SIE/${region}/$fileout_sie 
 #	    cdo  -fldmean -sellonlatbox,0,360,0,90 tmp.nc  SIA/$fileout_sia >& /dev/null
 
-    /bin/rm tmp.nc tmp2.nc tmp3.nc tmpmul.nc
+    /bin/rm tmp.nc tmp2.nc tmp3.nc tmpmul.nc tmp3fixed.nc tmpmulmask.nc lsmask_cansipsv2_maskonly.nc
 done
 
 rm ~/Data/Observations/tmpmask.nc  

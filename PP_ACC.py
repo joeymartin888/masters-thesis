@@ -21,14 +21,25 @@ import math as math
 #import cdo; c=cdo.Cdo()
 
 auto_corr=True
+show_timeseries=True
+thesis_figures=True
 
+region_titles=['Pan-Arctic', 'Central Arctic', 'GIN Seas', 'Barents Sea', 'Kara Sea', 'Laptev Sea', 'East Siberian Sea', 'Chukchi Sea', 'Bering Sea', 'Sea of Okhotsk', 'Beaufort Sea', 'Canadian Archipelago', 'Hudson Bay', 'Baffin Bay', 'Labrador Sea']
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="0NONE" 
-
+region="0NONE"
 if region[1].isdigit():
     r=int(region[0:2])
 else:
     r=int(region[0])
+    
+std_mask=True
+
+if std_mask:
+    mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
+    gridpoint=nc.getvar('/home/josmarti/Data/gridpoint_1x1.nc','areacella')
+    mask[mask != r]=0
+    mask[mask == r]=1
+    area=np.sum(np.multiply(gridpoint,mask))
 #%%
 cyears=range(2300,2449)
 control=np.zeros((12,len(cyears)))
@@ -46,7 +57,7 @@ data=loadmat('/home/josmarti/Downloads/SIE_16.mat')
 
 pstyle="pc"
 
-metric='SIE'
+metric='SIV'
 
 syear=1979; eyear=2016; 
 
@@ -68,7 +79,7 @@ PIOMAS=np.loadtxt('/home/josmarti/Data/Observations/PIOMAS_SIV_monthly_1979-2020
 if metric=='SIV':
     mean_obs=np.mean(PIOMAS[(syear-1979):(eyear-1979)], axis=0)*1e12
 
-years=[2312, 2435, 2413, 2356, 2387, 2332] #from low to high SIV anomaly
+years=[2312, 2435, 2413, 2356, 2387, 2332] #from low to high SIV anomaly #BAR = 2332, 2312, 2413, 2356, 2387, 2435 
 ensembles=["%03d" % i for i in range(1,13)]
 #ensembles=["001"]
 run_length=1 #years
@@ -79,6 +90,53 @@ emonth=["%02d" % i for i in range(0,12,2)]
 emonth[0]="12"
 
 monthly_matrix=np.zeros((6,(len(years)*12),36))
+
+
+#Select observation data set
+Data="Had2CIS"
+
+#obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
+
+#Select Year Range
+obs_years=range(1980,2019)
+period=max(obs_years) - min(obs_years)
+
+#Shape observations
+if r !=0 :
+    """obsingeo=nc.getvar('/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc', 'SICN').squeeze()
+    #obsingeo[obsingeo.mask==True]=1 #CHECK WITH MICHAEL!!!!!!
+    if metric=="SIE":
+        obsingeo[obsingeo <= 0.15] = 0
+        obsingeo[obsingeo > 0.15] = 1
+    mask=nc.getvar('/home/josmarti/Data/1x1_reg_mask.nc', 'region').squeeze()
+    gridpoint=nc.getvar('/home/josmarti/Data/gridpoint_1x1.nc','areacella')
+    mask[mask != r]=0
+    mask[mask == r]=1
+    obs1=np.multiply(obsingeo.astype(float),mask.astype(float)) #changes to dtype=float64 to avoid run time error
+    #obs2=obs1 #Select Northern Hemisphere
+    obsnh=np.multiply(obs1,gridpoint.astype(float))
+    obstemp=np.sum(np.sum((obsnh/(1e6*2.8**2)), axis=1), axis=1) #CHANGED FROM MEAN"""
+    obsin=nc.getvar(('/home/josmarti/Data/Observations/Observed_SIE_%i.nc' % r), 'SICN').squeeze()*2*math.pi*6.371**2
+    obs2mask=obsin[((min(obs_years)-1980)*12):((max(obs_years)+2-1980)*12)]
+    obs=np.reshape(obs2mask, ((period+2),12)).transpose()
+else:
+    obsingeo=np.delete(nc.getvar('/home/josmarti/Data/Observations/had2cis_128_64_195901_202004_sic.nc', 'SICN').squeeze(), 128, 2)
+    gridpoint=nc.getvar('/home/josmarti/Data/areacella_fx_CanCM4_decadal2001_r0i0p0.nc','areacella')
+    obs1=np.multiply(obsingeo,gridpoint)
+    obsnh=np.delete(obs1, range(32), axis=1)
+    obstemp=np.mean(np.mean(obsnh, axis=1), axis=1)
+    obs2mask=obstemp[((min(obs_years)-1959)*12):((max(obs_years)+2-1959)*12)] 
+    if Data == "Had2CIS":
+        if metric == "SIA":
+            obs=np.reshape(obs2mask, ((period+2),12)).transpose()
+        elif metric == "SIE":
+            obsin=nc.getvar('/home/josmarti/Data/Observations/had2cisSIE.nc', 'SICN').squeeze()[((min(obs_years)-1959)*12):((max(obs_years)+2-1959)*12)] 
+            obs=np.reshape(obsin, ((period+2),12)).transpose()
+    elif Data == "NSIDC":
+        obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
+        obs=np.delete((np.reshape(obsin, ((period+3),12)).transpose()),range(min(obs_years)-1979),1)
+
+original_obs=obs #used for standard deviation and end plot
 
 for i in range(6):
     if i == 0:
@@ -113,20 +171,21 @@ for i in range(6):
                 geosum1=np.sum(np.sum(var1nh, axis=1), axis=1)
                 geosum2=np.sum(np.sum(var2nh, axis=1), axis=1)
                 geosum3=np.sum(np.sum(var3nh, axis=1), axis=1)
+                geosum1=np.concatenate((geosum1,geosum2,geosum3))
             #daily_matrix[years.index(year),ensembles.index(e),:]=np.sum(np.sum(var[:,32:64,:], axis=1), axis=1)
             if year==2413 and e=='011' and i==0: #i241501 e11 seems to have an extra timestep
                 geosum1=geosum1[0:-1]
             monthly_matrix[i,(12*years.index(year)+ensembles.index(e)),:]=geosum1
 
 #%%
-for j in range(6): #MITCH DATA 1/3
+"""for j in range(6): #MITCH DATA 1/3
     monthly_matrix[j,:,:]=np.reshape(np.transpose(loadmat('/home/josmarti/Downloads/SIE_16.mat')['metric_ensemble'][:,j,:,:], (0,2,1)), (72,36))
 #"""
 #%%
 
-clim_mean=data['control_clim'] #MITCH DATA 2/3
-control=np.reshape(data['metric_control'], (300,12)).transpose() #MITCH DATA 3/3
-#clim_mean=np.mean(control, axis=1, keepdims=True).transpose()
+#clim_mean=data['control_clim'] #MITCH DATA 2/3
+#control=np.reshape(data['metric_control'], (300,12)).transpose() #MITCH DATA 3/3
+clim_mean=np.mean(control, axis=1, keepdims=True).transpose()
     
 model=np.zeros((6,(len(years)*12),36))
 truth=np.zeros((6,(len(years)*12),36))
@@ -205,11 +264,14 @@ for k in range(0,12,2):
 #ACC=data['ACC_year_target']
 jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3') #Mitch's colors
 
-if r!=0:
-    for h in range(12):
-        if np.std(control[h])<0.03:
-            ACC[h,:]=0
-            boot[h,:]=-1
+if std_mask:
+        if r!=0:
+            if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot[i,:]=-1  # 0 will be seen as significant
+                        ACC[i,:]=0
 
 
 fig, ax = plt.subplots(figsize=(4,9))
@@ -224,10 +286,13 @@ for month in range(len(boot[:,0])):
             for lead in range(len(boot[0,:])):
                 if boot[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
                     plt.scatter((month+0.5),(lead+0.5), color = 'black', s=20)
-if r!=0:
-    plt.title("%s Perfect Model Skill" % region, fontsize=16)
+if thesis_figures:
+    plt.title("%s PM" % region_titles[r], fontsize=16)
 else:
-    plt.title("CanCM4 Perfect Model Skill", fontsize=16)
+    if r!=0:
+        plt.title("%s Perfect Model Skill" % region, fontsize=16)
+    else:
+        plt.title("CanCM4 Perfect Model Skill", fontsize=16)
 plt.colorbar(pc)
 ax.invert_xaxis
 ax.invert_yaxis
@@ -235,11 +300,21 @@ ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)
 ax.set_xticklabels(calendar.month_name[1:13], rotation=90)    
 ax.set_yticks(np.arange(36)+0.5)    
 ax.set_yticklabels(range(36))  
-plt.xlabel("Predicted Month")    
+plt.xlabel("Target Month")    
 plt.ylabel("Lead (Months)")      
 plt.show()            
 
 if auto_corr:
+
+    if std_mask:
+        if r!=0:
+            if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot_auto[i,:]=-1  # 0 will be seen as significant
+                        auto[i,:]=0
+    
     fig, ax = plt.subplots(figsize=(4,9))
     if pstyle == "pc":
         #pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar') #CCCMA
@@ -252,10 +327,13 @@ if auto_corr:
                 for lead in range(len(boot[0,:])):
                     if boot_auto[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
                         plt.scatter((month+0.5),(lead+0.5), color = 'black', s=20)
-    if r!=0:
-        plt.title("%s PM Autocorrelation" % region, fontsize=16)
+    if thesis_figures:
+        plt.title("%s PM" % region_titles[r], fontsize=16)
     else:
-        plt.title("CanCM4 PM Autocorrelation", fontsize=16)
+        if r!=0:
+            plt.title("%s PM Autocorrelation" % region, fontsize=16)
+        else:
+            plt.title("CanCM4 PM Autocorrelation", fontsize=16)
     plt.colorbar(pc)
     ax.invert_xaxis
     ax.invert_yaxis
@@ -267,4 +345,19 @@ if auto_corr:
     plt.ylabel("Lead (Months)")      
     plt.show()      
 
-np.save('temp/%s.npy' % region, ACC.transpose()[0:12])        
+np.save('temp/%s.npy' % region, ACC.transpose()[0:12])
+np.save('temp/%s_boot.npy' % region, boot_temp.transpose()[0:12])        
+#%%
+
+if show_timeseries:
+    fig, ax = plt.subplots()
+    for i in range(72): 
+        plt.plot(range(12), monthly_matrix[0,i,0:12])
+    if metric != "SIV":
+        plt.plot(np.mean(original_obs*2*math.pi*6.371**2, axis=1), linewidth=2.5, color='k', label="Observations")
+    else:
+       plt.plot(mean_obs, linewidth=2.5, color='k', label="Observations") 
+    plt.title("Montly mean SIV of first year run of 12 ensembles for six start years\n Observations (1979-2016)")
+    plt.legend()
+    ax.set_xticks(np.arange(len(calendar.month_name[1:13])))   
+    ax.set_xticklabels(calendar.month_name[1:13], rotation=90, fontsize=12) 
