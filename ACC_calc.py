@@ -23,8 +23,10 @@ import rms_utils_boot as bt
 from scipy.io import loadmat
 import Mitch_detrend as md
 
+mitch=loadmat('/home/josmarti/Downloads/regionalSIE.mat')
+
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="8BER" 
+region="1ARC" 
 region_titles=['Pan-Arctic', 'Central Arctic', 'GIN Seas', 'Barents Sea', 'Kara Sea', 'Laptev Sea', 'East Siberian Sea', 'Chukchi Sea', 'Bering Sea', 'Sea of Okhotsk', 'Beaufort Sea', 'Canadian Archipelago', 'Hudson Bay', 'Baffin Bay', 'Labrador Sea']
 
 if region[1].isdigit():
@@ -37,11 +39,10 @@ metric="SIE"
 
 #Select observation data set
 Data="Had2CIS"
-
 #obsin=nc.getvar('/home/josmarti/Data/Observations/NSIDC_1979_2010_nh_siea.nc', str.lower(metric)).squeeze()
 
 #Select Year Range
-years=range(1980,2019)
+years=range(1980,2017)
 period=max(years) - min(years)
 
 sim=np.zeros((12,12,len(years)))
@@ -62,6 +63,7 @@ if r !=0 :
     obsnh=np.multiply(obs1,gridpoint.astype(float))
     obstemp=np.sum(np.sum((obsnh/(1e6*2.8**2)), axis=1), axis=1) #CHANGED FROM MEAN"""
     obsin=nc.getvar(('/home/josmarti/Data/Observations/Observed_SIE_%i.nc' % r), 'SICN').squeeze()*2*math.pi*6.371**2
+    #obsin=mitch['regionalSIE'][0:456,(r-1)]
     obs2mask=obsin[((min(years)-1980)*12):((max(years)+2-1980)*12)]
     obs=np.reshape(obs2mask, ((period+2),12)).transpose()
 else:
@@ -97,28 +99,29 @@ if std_mask:
     mask[mask != r]=0
     mask[mask == r]=1
     area=np.sum(np.multiply(gridpoint,mask))
+    pm_std=np.load('temp/%s_std.npy' % region)
 
 #Set figure titles for thesis
 thesis_figures=True
-region_figures=True
+region_figures=False
 titles=[]
 
 #Mitch's colors
 jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3') 
 
 #Used to seperate model outputs
-single=True
+single=False
 
 
 #Select CANSIPS v1 or v2
-#CANSIPS="v1"
-CANSIPSes=["v1", "v2"]
+CANSIPS="v1"
+#CANSIPSes=["v1", "v2"]
 #CANSIPS="v2"
 
 #Select OLD or NEW
-version="NEW"
+#version="NEW"
 #version="OLD"
-#versions=["OLD", "NEW"]
+versions=["OLD", "NEW"]
 #versions=["OLD/1x1_trial", "NEW/1x1_trial"]
 
 #Set plot style
@@ -147,36 +150,36 @@ for init in range(12):
    
 original_obs=obs #used for standard deviation
 
+auto_corr=False
+
 if detrend: #sim detrended below
-    #persistence=signal.detrend(persistence)
-    #obs=signal.detrend(obs)
-    obs=md.Mitch_detrend(obs)
-    persistence=md.Mitch_detrend(persistence)
+    if auto_corr:
+        persistence=signal.detrend(persistence)
+        obs=signal.detrend(obs)
+    else:
+        obs=md.Mitch_detrend(obs)
+        persistence=md.Mitch_detrend(persistence)
 
 if single:
     print("Single Model Active")
 
-auto_corr=True
+
 
 if auto_corr:
     auto=np.zeros((12,36))
     boot_temp_auto=np.zeros((12,36), dtype=np.ndarray)
     boot_auto=np.zeros((12,36), dtype=np.ndarray)
-    for i in range(12):
-        for j in range(36):
-            if (i-j-1)<0:
-                auto[i,j]=np.corrcoef(obs[(i-((j % 12)+1)),0:-((j/12)+1)],obs[i,((j/12)+1)::])[1,0]
-                boot_temp_auto[i,j]=bt.calc_corr_boot(obs[(i-((j % 12)+1)),0:-((j/12)+1)],obs[i,((j/12)+1)::], 1000)
-                boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
-            else:
-                if (j/12)==0:
-                    auto[i,j]=np.corrcoef(obs[(i-((j % 12)+1)),:],obs[i,:])[1,0]
-                    boot_temp_auto[i,j]=bt.calc_corr_boot(obs[(i-((j % 12)+1)),:],obs[i,:], 1000)
-                    boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
-                else:
-                    auto[i,j]=np.corrcoef(obs[(i-((j % 12)+1)),0:-(j/12)],obs[i,(j/12)::])[1,0]
-                    boot_temp_auto[i,j]=bt.calc_corr_boot(obs[(i-((j % 12)+1)),0:-(j/12)],obs[i,(j/12)::], 1000)
-                    boot_auto[i,j]=bt.calc_boot_stats(boot_temp_auto[i,j],sides=1,pval_threshold=0.05)[1]
+    for tmon in range(12):  #Code from Michael Sigmond
+        for lead in range(36):
+            imon=tmon-lead%12-1
+            yearoffset=lead/12    
+            if imon<0:
+                yearoffset=yearoffset+1
+                imon=imon+12
+            #print tmon,lead,imon,yearoffset
+            auto[tmon,lead]=np.corrcoef(obs[imon,(3-yearoffset):(38-yearoffset)],obs[tmon,3::])[1,0]
+            boot_temp_auto[tmon,lead]=bt.calc_corr_boot(obs[imon,(3-yearoffset):(38-yearoffset)],obs[tmon,3::], 1000)
+            boot_auto[tmon,lead]=bt.calc_boot_stats(boot_temp_auto[tmon,lead],sides=1,pval_threshold=0.05)[1]
 if std_mask:
     if r!=0:
         if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
@@ -185,6 +188,13 @@ if std_mask:
                 if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
                     boot_auto[i,:]=-1  # 0 will be seen as significant
                     auto[i,:]=0
+        if (len(np.std(pm_std, axis=1)[(np.std(pm_std, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+            print ("Perfect STD mask in effect")
+            for i in range(len(auto)):
+                if ((np.std(pm_std, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                    boot_auto[i,:]=-1  # 0 will be seen as significant
+                    auto[i,:]=0
+
 
 if auto_corr:
     fig, ax = plt.subplots(figsize=(4,9))
@@ -195,12 +205,12 @@ if auto_corr:
     elif pstyle == "cf":
         pcparams=dict(clevs=np.arange(-0.15,1.05,0.1),cmap='acccbar',latlon=False)
         pc=rpl.add_cf(ax,range(1,13),range(1,37),ACC,**pcparams)
-    for month in range(len(boot[:,0])):
-                for lead in range(len(boot[0,:])):
+    for month in range(len(boot_auto[:,0])):
+                for lead in range(len(boot_auto[0,:])):
                     if boot_auto[month,lead]>0:   #MUST BE CHANGED BACK to >=!!!!!!
                         plt.scatter((month+0.5),(lead+0.5), color = 'black', s=20)
     if thesis_figures:
-        plt.title("%s OP" % region_titles[r], fontsize=16)
+        plt.title("%s Obs" % region_titles[r], fontsize=16)
     else:
         if r!=0:
             plt.title("%s Detrended Obs Autocorrelation" % region, fontsize=16)
@@ -220,13 +230,13 @@ if auto_corr:
 
 diff=0  
 #%%    
-#for version in versions:
+for version in versions:
 #for CANSIPS in CANSIPSes:
-for smark in range(2):    
+#for smark in range(2):    
     #Select SIE or SIA
 
         
-    if version=="NEW":
+    """if version=="NEW":
         CANSIPS="v2"
     #for overall comparison"""
     
@@ -308,7 +318,10 @@ for smark in range(2):
                     ACC[init,target]=np.corrcoef(sim[init,target,:],obs[target,0:-1])[1,0]
                     std_dev[init,target]=np.std(original_obs[target,0:-1])
                     boot_temp[init,target]=bt.calc_corr_boot(sim[init,target,:],obs[target,0:-1],1000)
-                    boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+                    if ACC[init,target]>0:
+                        boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+                    else:
+                        boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[2]
                     ACC_pers[init,target]=np.corrcoef(persistence[init,target,:],obs[target,0:-1])[1,0]
                     boot_temp_pers[init,target]=bt.calc_corr_boot(persistence[init,target,:],obs[target,0:-1],1000)
                     boot_pers[init,target]=bt.calc_boot_stats(boot_temp_pers[init,target],sides=2,pval_threshold=0.05)[1]
@@ -316,7 +329,10 @@ for smark in range(2):
                     ACC[init,target]=np.corrcoef(sim[init,target,:],obs[target,1::])[1,0]
                     std_dev[init,target]=np.std(original_obs[target,1::])
                     boot_temp[init,target]=bt.calc_corr_boot(sim[init,target,:],obs[target,1::],1000)
-                    boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+                    if ACC[init,target]>0:
+                        boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+                    else:
+                        boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[2]
                     ACC_pers[init,target]=np.corrcoef(persistence[init,target,:],obs[target,1::])[1,0]
                     boot_temp_pers[init,target]=bt.calc_corr_boot(persistence[init,target,:],obs[target,1::],1000)
                     boot_pers[init,target]=bt.calc_boot_stats(boot_temp_pers[init,target],sides=2,pval_threshold=0.05)[1]
@@ -383,6 +399,15 @@ for smark in range(2):
                     boot2[:,i]=-1 # 0 will be seen as significant
                     ACC2_pers[:,i]=0
                     ACC2[:,i]=0
+        if single:
+            if (len(np.std(pm_std, axis=1)[(np.std(pm_std, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(pm_std, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot2_pers[:,i]=-1  # 0 will be seen as significant
+                        boot2[:,i]=-1 # 0 will be seen as significant
+                        ACC2_pers[:,i]=0
+                        ACC2[:,i]=0
     
     if show_persistence:    
         fig, ax = plt.subplots()
@@ -432,11 +457,15 @@ for smark in range(2):
             if boot2[init,target]==np.nan:
                 plt.scatter((target+0.5),(init+0.5), color = 'red', s=50, marker='x')
                 print("done")
-            if boot2[init,target]>0:
-                if ACC2_pers[init,target]>=ACC2[init,target]:
+            if ACC2[init,target]>0:
+                if boot2[init,target]>0:
+                    if ACC2_pers[init,target]>=ACC2[init,target]:
+                        plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
+                    else:
+                        plt.scatter((target+0.5),(init+0.5), color = 'black', s=40, marker='^')
+            elif ACC2[init,target]<0:
+                if boot2[init,target]<0:
                     plt.scatter((target+0.5),(init+0.5), color = 'black', s=20)
-                else:
-                    plt.scatter((target+0.5),(init+0.5), color = 'black', s=40, marker='^')
             """else:
                 if ACC2[init,target]>ACC2_pers[init,target]:
                     plt.scatter((target+0.5),(init+0.5), color = 'blue', s=20, marker='s')"""
@@ -472,7 +501,7 @@ for smark in range(2):
                 titles.append("CanSIPSv2")
     if region_figures:
         print(version)
-        plt.title("%s OP" % region_titles[r], fontsize=20)
+        plt.title("%s" % region_titles[r], fontsize=20)
     ax.invert_xaxis
     ax.invert_yaxis
     ax.set_xticks(np.arange(len(calendar.month_name[1:13]))+0.5)   
@@ -520,7 +549,10 @@ else:
     boot_temp=new_boot-old_boot
     for init in range(12):
         for target in range(12):
-            boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+            if ACC[init,target]>0:
+                boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[1]
+            else:
+                boot[init,target]=bt.calc_boot_stats(boot_temp[init,target],sides=1,pval_threshold=0.05)[2]
 
 if r!=0:
         if (len(np.std(obs, axis=1)[((np.std(obs, axis=1)*1e15)/np.sum(area)) < 0.8])!=0 and std_mask):
@@ -529,6 +561,14 @@ if r!=0:
                     boot[:,i]=-1 # 0 will be seen as significant
                     if single:
                         ACC[:,i]=0
+        if single:
+            if (len(np.std(pm_std, axis=1)[(np.std(pm_std, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("Perfect STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(pm_std, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot[:,i]=-1 # 0 will be seen as significant
+                        if single:
+                            ACC[:,i]=0
 
 
 fig, ax = plt.subplots()

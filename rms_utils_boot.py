@@ -184,7 +184,31 @@ Created on Thu Oct 27 11:15:11 2016
         corr[np.isnan(corr)==True] = 0.0
     return corr
     
-##############################################################################
+##################################################################################
+def calc_corr_boot_choose(x, y, mean, nboot):    
+    """ Compute Bootstrapped Correlation between x and y
+
+    Parameters
+    ----------
+    x : timeseries 1 [time,...]
+    y : timeseries 2 [time,...]
+
+    Returns
+    -------
+    corr: bootstrapped correlation between x and y [boot,...]
+    """ 
+
+    nt=np.shape(x)[0]  
+    nboot=np.array(nboot,dtype=int)
+    dims=np.concatenate(([nboot],np.array(np.shape(x)[1::])))
+    #print (dims)
+    #dims=np.int(dims)
+    corr_boot=np.zeros(int(dims))
+    for i in range(nboot):
+        resample_i = np.floor(np.random.rand(nt)*nt).astype(int)
+        #print resample_i
+        corr_boot[i,...]=calc_corr_choose(x[resample_i,...],y[resample_i,...], mean, mean)
+    return corr_boot    
 
 
 

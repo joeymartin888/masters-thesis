@@ -57,7 +57,7 @@ data=loadmat('/home/josmarti/Downloads/SIE_16.mat')
 
 pstyle="pc"
 
-metric='SIV'
+metric='SIE'
 
 syear=1979; eyear=2016; 
 
@@ -227,15 +227,15 @@ for i in range(0,12,2):
         #truth=np.reshape(monthly_matrix[:,:,m],72)
         if (m+i)<12:
             ACC[(i-12+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-12+m)],clim_mean[0,(i-12+m)])
-            boot_temp[(i-12+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
+            boot_temp[(i-12+m),m]=bt.calc_corr_boot_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-12+m)],1000)
             boot[(i-12+m),m]=bt.calc_boot_stats(boot_temp[(i-12+m),m],sides=1,pval_threshold=0.05)[1]
         elif (m+i)<24:
             ACC[(i-24+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-24+m)],clim_mean[0,(i-24+m)])
-            boot_temp[(i-24+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
+            boot_temp[(i-24+m),m]=bt.calc_corr_boot_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-24+m)],1000)
             boot[(i-24+m),m]=bt.calc_boot_stats(boot_temp[(i-24+m),m],sides=1,pval_threshold=0.05)[1]
         else:
             ACC[(i-36+m),m]=bt.calc_corr_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-36+m)],clim_mean[0,(i-36+m)])
-            boot_temp[(i-36+m),m]=bt.calc_corr_boot(model[(i/2),:,m],truth[(i/2),:,m],1000)
+            boot_temp[(i-36+m),m]=bt.calc_corr_boot_choose(model[(i/2),:,m],truth[(i/2),:,m],clim_mean[0,(i-36+m)],1000)
             boot[(i-36+m),m]=bt.calc_boot_stats(boot_temp[(i-36+m),m],sides=1,pval_threshold=0.05)[1]
 
 
@@ -265,11 +265,21 @@ for k in range(0,12,2):
 jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3') #Mitch's colors
 
 if std_mask:
+        year_stack=np.reshape(monthly_matrix, (6,(72*3),12))
+        pm_std=year_stack[0,:,range(0,12)]
+        for i in range(1,6):
+            y=np.concatenate((pm_std,year_stack[i,:,range((-(i*2)),(12-(i*2)))]), axis=1)
         if r!=0:
             if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
                 print ("STD mask in effect")
                 for i in range(len(auto)):
                     if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot[i,:]=-1  # 0 will be seen as significant
+                        ACC[i,:]=0
+            if (len(np.std(pm_std, axis=1)[(np.std(pm_std, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(pm_std, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
                         boot[i,:]=-1  # 0 will be seen as significant
                         ACC[i,:]=0
 
@@ -346,7 +356,8 @@ if auto_corr:
     plt.show()      
 
 np.save('temp/%s.npy' % region, ACC.transpose()[0:12])
-np.save('temp/%s_boot.npy' % region, boot_temp.transpose()[0:12])        
+np.save('temp/%s_boot.npy' % region, boot_temp.transpose()[0:12])     
+np.save('temp/%s_std.npy' % region, pm_std)   
 #%%
 
 if show_timeseries:

@@ -21,7 +21,8 @@ r=0
 jet3=colors.ListedColormap(loadmat('/home/josmarti/Downloads/cmap_jet3.mat')['cmap'], name='jet3')
 
 ####### read data
-infile ='/home/josmarti/Data/1x1_reg_mask.nc'
+infile ='/home/josmarti/Data/reg_grid_iceregions.nc'
+lsmask=nc.getvar('/home/josmarti/Data/lsmask_cansipsv2_sea.nc', 'LSMASK')
 #infile ='/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc'
 #infile ='/home/josmarti/Data/sic_monthly_CCCma-CanCM4_NEW_1x1_grid_i20171201.nc'
 #infile = '/home/josmarti/Data/Observations/had2cis_1x1_198001_202004_sicn.nc'
