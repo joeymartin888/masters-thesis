@@ -26,7 +26,7 @@ import Mitch_detrend as md
 mitch=loadmat('/home/josmarti/Downloads/regionalSIE.mat')
 
 #regionlabs=['0land','1ARC','2GIN','3BAR','4KAR','5LAP','6ESI','7CHU','8BER','9OKH','10BEA','11CAN','12HUD','13BAF','14LAB','15OTHER']
-region="1ARC" 
+region="0NONE" 
 region_titles=['Pan-Arctic', 'Central Arctic', 'GIN Seas', 'Barents Sea', 'Kara Sea', 'Laptev Sea', 'East Siberian Sea', 'Chukchi Sea', 'Bering Sea', 'Sea of Okhotsk', 'Beaufort Sea', 'Canadian Archipelago', 'Hudson Bay', 'Baffin Bay', 'Labrador Sea']
 
 if region[1].isdigit():
@@ -88,7 +88,7 @@ else:
 detrend=True
 
 #Display persistence forecast
-show_persistence=False
+show_persistence=True
 
 #Mask Low STD
 std_mask=True
@@ -180,20 +180,20 @@ if auto_corr:
             auto[tmon,lead]=np.corrcoef(obs[imon,(3-yearoffset):(38-yearoffset)],obs[tmon,3::])[1,0]
             boot_temp_auto[tmon,lead]=bt.calc_corr_boot(obs[imon,(3-yearoffset):(38-yearoffset)],obs[tmon,3::], 1000)
             boot_auto[tmon,lead]=bt.calc_boot_stats(boot_temp_auto[tmon,lead],sides=1,pval_threshold=0.05)[1]
-if std_mask:
-    if r!=0:
-        if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
-            print ("STD mask in effect")
-            for i in range(len(auto)):
-                if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
-                    boot_auto[i,:]=-1  # 0 will be seen as significant
-                    auto[i,:]=0
-        if (len(np.std(pm_std, axis=1)[(np.std(pm_std, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
-            print ("Perfect STD mask in effect")
-            for i in range(len(auto)):
-                if ((np.std(pm_std, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
-                    boot_auto[i,:]=-1  # 0 will be seen as significant
-                    auto[i,:]=0
+    if std_mask:
+        if r!=0:
+            if (len(np.std(original_obs, axis=1)[(np.std(original_obs, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(original_obs, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot_auto[i,:]=-1  # 0 will be seen as significant
+                        auto[i,:]=0
+            if (len(np.std(pm_std, axis=1)[(np.std(pm_std, axis=1)*1e15)/np.sum(area) < 0.8])!=0 and std_mask):
+                print ("Perfect STD mask in effect")
+                for i in range(len(auto)):
+                    if ((np.std(pm_std, axis=1)[i]*1e15)/np.sum(area)) < 0.8:
+                        boot_auto[i,:]=-1  # 0 will be seen as significant
+                        auto[i,:]=0
 
 
 if auto_corr:
@@ -236,13 +236,15 @@ for version in versions:
     #Select SIE or SIA
 
         
-    """if version=="NEW":
+    """ if version=="NEW":
         CANSIPS="v2"
     #for overall comparison"""
     
 
     
     #Build model array
+    #This is the part of the code where the SIE data get loaded in from the models as var3 and var4
+    #The ensemble mean of var3 and var4 are then aded to the "sim" matrix which is 12 target months x 12 lead times x however many years
     for months in range(1,13):
     	if months<10:
     		m="0%s" % months
@@ -278,7 +280,7 @@ for version in versions:
                 if metric=="SIE":
                     extent=var*2*math.pi*6.371**2 #multiply constant to convert fraction to SIE
                     #avex=np.mean(extent, axis=1)
-                    sim[months-1,:,year-min(years)]=np.mean(extent, axis=1) #Average across ensembles and insert into matrix
+                    sim[months-1,:,year-min(years)]=np.mean(extent, axis=1) #Average across ensembles and insert into matrix by INITIALIZATION month
 #%%
     
     for i in range(12): #line up all target months
@@ -314,7 +316,7 @@ for version in versions:
     boot_pers=np.zeros((12,12), dtype=np.ndarray)
     for init in range(12):
     	for target in range(12):
-                if init<=target: 
+                if init<=target: #then first sim year is the same as first obs year 
                     ACC[init,target]=np.corrcoef(sim[init,target,:],obs[target,0:-1])[1,0]
                     std_dev[init,target]=np.std(original_obs[target,0:-1])
                     boot_temp[init,target]=bt.calc_corr_boot(sim[init,target,:],obs[target,0:-1],1000)
@@ -325,7 +327,7 @@ for version in versions:
                     ACC_pers[init,target]=np.corrcoef(persistence[init,target,:],obs[target,0:-1])[1,0]
                     boot_temp_pers[init,target]=bt.calc_corr_boot(persistence[init,target,:],obs[target,0:-1],1000)
                     boot_pers[init,target]=bt.calc_boot_stats(boot_temp_pers[init,target],sides=2,pval_threshold=0.05)[1]
-                else: #rolls observations to realign years
+                else: #then first sim year is the year after obs year
                     ACC[init,target]=np.corrcoef(sim[init,target,:],obs[target,1::])[1,0]
                     std_dev[init,target]=np.std(original_obs[target,1::])
                     boot_temp[init,target]=bt.calc_corr_boot(sim[init,target,:],obs[target,1::],1000)
@@ -367,7 +369,7 @@ for version in versions:
     boot_temp2_pers=np.zeros((12,12), dtype=np.ndarray)
     boot2_pers=np.zeros((12,12))
 
-    for init in range(12):
+    for init in range(12): #currently, the ACC matrix is organized by target month and init month; this changes it to target month by lead time
         for target in range(12):
             if target>=init: #same year
                 ilag=target-init
@@ -424,7 +426,7 @@ for version in versions:
             if detrend:
                 plt.title("Detrended Anomaly Persistence Forecast", fontsize=15)
             else:
-                plt.title("Anomaly Persistance Forecast", fontsize=15)
+                plt.title("Anomaly Persistence Forecast", fontsize=15)
         else:    
             if detrend:
                 plt.title("ACC for Detrended Persistence from %i to %i" % (min(years),(max(years)+1)))
@@ -484,9 +486,9 @@ for version in versions:
             plt.title("GEM-NEMO %s ACC of forecasts from %i to %i" % (metric, min(years),(max(years))))
         elif smark==1:
             if r!=0:
-                plt.title("%s Operational Skill" % region, fontsize=20)
+                plt.title("%s OP" % region_titles[r], fontsize=20)
             else:
-                plt.title("CanCM4 Operational Skill", fontsize=20)
+                plt.title("Pan-Arctic OP", fontsize=20)
     if thesis_figures:
         print("%s" % metric)
         if CANSIPS=="v1":
